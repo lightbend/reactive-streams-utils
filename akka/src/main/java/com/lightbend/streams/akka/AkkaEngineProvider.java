@@ -24,7 +24,7 @@ import java.util.concurrent.ForkJoinPool;
 
 /**
  * Provides the Akka Engine to the JDK9 modules system.
- *
+ * <p>
  * This will instantiate its own actor systems to
  */
 public class AkkaEngineProvider {
@@ -68,13 +68,13 @@ public class AkkaEngineProvider {
   private static AkkaEngine createEngine() {
     ActorSystem system = ActorSystem.create("reactive-streams-engine",
         BootstrapSetup.create()
-          // Use JDK common thread pool rather than instantiate our own.
-          .withDefaultExecutionContext(FutureConverters.fromExecutorService(ForkJoinPool.commonPool()))
-          // Be explicit about the classloader.
-          .withClassloader(AkkaEngine.class.getClassLoader())
-          // Use empty config to ensure any other actor systems using the root config don't conflict.
-          // todo maybe we want to be able to configure it?
-          .withConfig(ConfigFactory.empty())
+            // Use JDK common thread pool rather than instantiate our own.
+            .withDefaultExecutionContext(FutureConverters.fromExecutorService(ForkJoinPool.commonPool()))
+            // Be explicit about the classloader.
+            .withClassloader(AkkaEngine.class.getClassLoader())
+            // Use empty config to ensure any other actor systems using the root config don't conflict.
+            // todo maybe we want to be able to configure it?
+            .withConfig(ConfigFactory.empty())
     );
     Materializer materializer = ActorMaterializer.create(system);
 

@@ -16,7 +16,7 @@ import java.util.concurrent.Flow.*;
 
 /**
  * A subscriber with a result.
- *
+ * <p>
  * The result is provided through a {@link CompletionStage}, which is redeemed when the subscriber receives a
  * completion or error signal, or otherwise cancels the stream.
  *

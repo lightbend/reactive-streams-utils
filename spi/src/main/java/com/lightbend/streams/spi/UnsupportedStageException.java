@@ -13,7 +13,7 @@ package com.lightbend.streams.spi;
 
 /**
  * Exception thrown when a reactive streams engine doesn't support a stage that is passed to it.
- *
+ * <p>
  * All reactive streams engines should support all stages, but this allows for a graceful mechanism to report issues,
  * for example if in a future version a new stage is added that is not recognised by an existing implementation.
  */

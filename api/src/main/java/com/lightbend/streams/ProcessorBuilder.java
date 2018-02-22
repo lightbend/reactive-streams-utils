@@ -38,7 +38,7 @@ public final class ProcessorBuilder<T, R> extends ReactiveStreamsBuilder<Process
    * Map the elements emitted by this processor using the <code>mapper</code> function.
    *
    * @param mapper The function to use to map the elements.
-   * @param <S> The type of elements that the <code>mapper</code> function emits.
+   * @param <S>    The type of elements that the <code>mapper</code> function emits.
    * @return A new processor builder that consumes elements of type <code>T</code> and emits the mapped elements.
    */
   public <S> ProcessorBuilder<T, S> map(Function<? super R, ? extends S> mapper) {
@@ -47,7 +47,7 @@ public final class ProcessorBuilder<T, R> extends ReactiveStreamsBuilder<Process
 
   /**
    * Filter elements emitted by this processor using the given {@link Predicate}.
-   *
+   * <p>
    * Any elements that return <code>true</code> when passed to the {@link Predicate} will be emitted, all other
    * elements will be dropped.
    *
@@ -61,7 +61,7 @@ public final class ProcessorBuilder<T, R> extends ReactiveStreamsBuilder<Process
   /**
    * Find the first element emitted by the {@link Processor}, and return it in a
    * {@link java.util.concurrent.CompletionStage}.
-   *
+   * <p>
    * If the stream is completed before a single element is emitted, then {@link Optional#empty()} will be emitted.
    *
    * @return A {@link SubscriberBuilder} that represents this processor builders inlet.
@@ -72,13 +72,13 @@ public final class ProcessorBuilder<T, R> extends ReactiveStreamsBuilder<Process
 
   /**
    * Collect the elements emitted by this processor builder using the given {@link Collector}.
-   *
+   * <p>
    * Since Reactive Streams are intrinsically sequential, only the accumulator of the collector will be used, the
    * combiner will not be used.
    *
    * @param collector The collector to collect the elements.
-   * @param <S> The result of the collector.
-   * @param <A> The accumulator type.
+   * @param <S>       The result of the collector.
+   * @param <A>       The accumulator type.
    * @return A {@link SubscriberBuilder} that represents this processor builders inlet.
    */
   public <S, A> SubscriberBuilder<T, S> collect(Collector<? super R, A, S> collector) {
@@ -119,7 +119,7 @@ public final class ProcessorBuilder<T, R> extends ReactiveStreamsBuilder<Process
    *
    * @param processor The processor to connect.
    * @return A {@link ProcessorBuilder} that represents this processor builders inlet, and the passed in processors
-   *         outlet.
+   * outlet.
    */
   public <S> ProcessorBuilder<T, S> via(ProcessorBuilder<R, S> processor) {
     return new ProcessorBuilder<>(new InternalStages.Nested(processor), this);
@@ -130,7 +130,7 @@ public final class ProcessorBuilder<T, R> extends ReactiveStreamsBuilder<Process
    *
    * @param processor The processor builder to connect.
    * @return A {@link ProcessorBuilder} that represents this processor builders inlet, and the passed in
-   *         processor builders outlet.
+   * processor builders outlet.
    */
   public <S> ProcessorBuilder<T, S> via(Processor<R, S> processor) {
     return new ProcessorBuilder<>(new Stage.Processor(processor), this);

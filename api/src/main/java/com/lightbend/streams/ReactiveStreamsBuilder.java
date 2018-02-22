@@ -18,8 +18,8 @@ import java.util.*;
 /**
  * Superclass of all reactive streams builders.
  *
- * @see ReactiveStreams
  * @param <S> The shape of the graph being built.
+ * @see ReactiveStreams
  */
 public abstract class ReactiveStreamsBuilder<S> {
 
@@ -62,7 +62,7 @@ public abstract class ReactiveStreamsBuilder<S> {
 
   /**
    * Verifies the invariants of the list of stages passed to the ReactiveStreamsEngine methods.
-   *
+   * <p>
    * This adds nothing to the functionality of the API, except for a sanity check of the APIs own operations, to catch
    * bugs etc. It ensures that the graph makes sense - eg, that the adjacent stages have an outlet and an inlet, and
    * will throw an error for example if you have a publisher followed by another publisher in the graph.
@@ -72,7 +72,7 @@ public abstract class ReactiveStreamsBuilder<S> {
     boolean expectInlet = requireInlet;
     Stage lastStage = null;
 
-    for (Stage stage: stages) {
+    for (Stage stage : stages) {
       if (lastStage != null && !lastStage.hasOutlet()) {
         throw new IllegalStateException("Graph required an outlet from the previous stage " + lastStage + " but none was found.");
       }
@@ -97,9 +97,9 @@ public abstract class ReactiveStreamsBuilder<S> {
         throw new IllegalStateException("Graph with empty stages must have an inlet and an outlet");
       }
     } else if (requireOutlet) {
-        if (!lastStage.hasOutlet()) {
-          throw new IllegalStateException("Graph should terminate with an outlet, but none was found at " + lastStage);
-        }
+      if (!lastStage.hasOutlet()) {
+        throw new IllegalStateException("Graph should terminate with an outlet, but none was found at " + lastStage);
+      }
     } else {
       if (lastStage.hasOutlet()) {
         throw new IllegalStateException("Graph should terminate with no outlet, but an outlet was found at " + lastStage);

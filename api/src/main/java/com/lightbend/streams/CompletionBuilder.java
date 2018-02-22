@@ -17,13 +17,13 @@ import java.util.concurrent.CompletionStage;
 
 /**
  * A builder for a closed reactive streams graph.
- *
+ * <p>
  * When built, this builder returns a {@link CompletionStage} that will be redeemed with the result produced by the
  * subscriber of the stream when the stream completes normally, or will be redeemed with an error if the stream
  * encounters an error.
  *
- * @see ReactiveStreams
  * @param <T> The result of the stream.
+ * @see ReactiveStreams
  */
 public final class CompletionBuilder<T> extends ReactiveStreamsBuilder<CompletionStage<T>> {
 

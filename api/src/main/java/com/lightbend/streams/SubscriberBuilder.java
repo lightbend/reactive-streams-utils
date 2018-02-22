@@ -12,11 +12,12 @@
 package com.lightbend.streams;
 
 import com.lightbend.streams.spi.Stage;
+
 import java.util.concurrent.Flow.*;
 
 /**
  * A builder for a {@link Subscriber} and its result.
- *
+ * <p>
  * When built, this builder returns a {@link SubscriberWithResult}, which encapsulates both a {@link Subscriber} and a
  * {@link java.util.concurrent.CompletionStage} that will be redeemed with the result produced by the subscriber when
  * the stream completes normally, or will be redeemed with an error if the subscriber receives an error.

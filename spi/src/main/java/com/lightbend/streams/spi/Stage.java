@@ -18,7 +18,7 @@ import java.util.stream.Collector;
 
 /**
  * A stage of a Reactive Streams graph.
- *
+ * <p>
  * A Reactive Streams engine will walk a graph of stages to produce {@link Publisher}, {@link Subscriber} and
  * {@link Processor} instances that handle the stream according to the sequence of stages.
  */
@@ -64,10 +64,10 @@ public interface Stage {
 
   /**
    * A map stage.
-   *
+   * <p>
    * The given mapper function should be invoked on each element consumed, and the output of the function should be
    * emitted.
-   *
+   * <p>
    * Any {@link RuntimeException} thrown by the function should be propagated down the stream as an error.
    */
   final class Map implements Inlet, Outlet {
@@ -89,10 +89,10 @@ public interface Stage {
 
   /**
    * A filter stage.
-   *
+   * <p>
    * The given predicate should be invoked on each element consumed, and if it returns true, the element should be
    * emitted.
-   *
+   * <p>
    * Any {@link RuntimeException} thrown by the function should be propagated down the stream as an error.
    */
   final class Filter implements Inlet, Outlet {
@@ -114,7 +114,7 @@ public interface Stage {
 
   /**
    * A publisher stage.
-   *
+   * <p>
    * The given publisher should be subscribed to whatever subscriber is provided to this graph, via any other subsequent
    * stages.
    */
@@ -137,7 +137,7 @@ public interface Stage {
 
   /**
    * A single element publisher stage.
-   *
+   * <p>
    * When built, should produce a publisher that emits the single element, then completes the stream.
    */
   final class OfSingle implements Outlet {
@@ -159,7 +159,7 @@ public interface Stage {
 
   /**
    * An empty publisher stage.
-   *
+   * <p>
    * When built, should produce a publisher that simply completes the stream.
    */
   final class Empty implements Outlet {
@@ -171,10 +171,10 @@ public interface Stage {
 
   /**
    * A publisher of many values.
-   *
+   * <p>
    * When built, should produce a publisher that produces all the values (until cancelled) emitted by this iterables
    * iterator, followed by completion of the stream.
-   *
+   * <p>
    * Any exceptions thrown by the iterator must be propagated downstream.
    */
   final class OfMany implements Outlet {
@@ -196,7 +196,7 @@ public interface Stage {
 
   /**
    * A processor stage.
-   *
+   * <p>
    * When built, should connect upstream of the graph to the inlet of this processor, and downstream to the outlet.
    */
   final class Processor implements Inlet, Outlet {
@@ -218,26 +218,27 @@ public interface Stage {
 
   /**
    * A subscriber stage that emits the first element encountered.
-   *
+   * <p>
    * When built, the {@link java.util.concurrent.CompletionStage} should emit an {@link java.util.Optional} of the first
    * element emitted. If no element is emitted before completion of the stream, it should emit an empty optional. Once
    * the element has been emitted, the stream should be cancelled if not already complete.
-   *
+   * <p>
    * If an error is emitted before the first element is encountered, the stream must redeem the completion stage with
    * that error.
    */
   final class FindFirst implements Inlet {
-    private FindFirst() { }
+    private FindFirst() {
+    }
 
     public static final FindFirst INSTANCE = new FindFirst();
   }
 
   /**
    * A subscriber.
-   *
+   * <p>
    * When built, the {@link java.util.concurrent.CompletionStage} should emit <code>null</code> when the stream
    * completes normally, or an error if the stream terminates with an error.
-   *
+   * <p>
    * Implementing this will typically require inserting a handler before the subscriber that listens for errors.
    */
   final class Subscriber implements Inlet {
@@ -259,13 +260,13 @@ public interface Stage {
 
   /**
    * A collect stage.
-   *
+   * <p>
    * This should use the collectors supplier to create an accumulated value, and then the accumulator BiConsumer should
    * be used to accumulate the received elements in the value. Finally, the returned
    * {@link java.util.concurrent.CompletionStage} should be redeemed by value returned by the finisher function applied
    * to the accumulated value when the stream terminates normally, or should be redeemed with an error if the stream
    * terminates with an error.
-   *
+   * <p>
    * If the collector throws an exception, the stream must be cancelled, and the
    * {@link java.util.concurrent.CompletionStage} must be redeemed with that error.
    */
@@ -283,7 +284,7 @@ public interface Stage {
 
   /**
    * A failed publisher.
-   *
+   * <p>
    * When built, this should produce a publisher that immediately fails the stream with the passed in error.
    */
   final class Failed implements Outlet {

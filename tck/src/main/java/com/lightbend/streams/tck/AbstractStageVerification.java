@@ -85,7 +85,7 @@ abstract class AbstractStageVerification {
       return ReactiveStreams.<T>failed(new RuntimeException("failed")).build(engine);
     }
 
-    protected abstract Flow.Processor<T,T> createIdentityFlowProcessor(int bufferSize);
+    protected abstract Flow.Processor<T, T> createIdentityFlowProcessor(int bufferSize);
 
     @Override
     public final Processor<T, T> createIdentityProcessor(int bufferSize) {

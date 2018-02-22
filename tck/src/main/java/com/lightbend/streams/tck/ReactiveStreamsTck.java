@@ -25,10 +25,10 @@ import java.util.function.Function;
 
 /**
  * The Reactive Streams TCK.
- *
+ * <p>
  * A concrete class that extends this class is all that is needed to verify a {@link ReactiveStreamsEngine} against
  * this TCK.
- *
+ * <p>
  * It produces a number of TestNG test classes via the TestNG {@link Factory} annotated {@link #allTests()} method.
  *
  * @param <E> The type of the Reactive Streams engine.
@@ -78,7 +78,7 @@ public abstract class ReactiveStreamsTck<E extends ReactiveStreamsEngine> {
 
     List<Object> allTests = new ArrayList<>();
     VerificationDeps deps = new VerificationDeps();
-    for (Function<VerificationDeps, AbstractStageVerification> creator: stageVerifications) {
+    for (Function<VerificationDeps, AbstractStageVerification> creator : stageVerifications) {
       AbstractStageVerification stageVerification = creator.apply(deps);
       allTests.add(stageVerification);
       allTests.addAll(stageVerification.reactiveStreamsTckVerifiers());
@@ -91,9 +91,11 @@ public abstract class ReactiveStreamsTck<E extends ReactiveStreamsEngine> {
     ReactiveStreamsEngine engine() {
       return engine;
     }
+
     TestEnvironment testEnvironment() {
       return testEnvironment;
     }
+
     ExecutorService executorService() {
       return ForkJoinPool.commonPool();
     }

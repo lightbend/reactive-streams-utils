@@ -41,7 +41,7 @@ public class AkkaEngine implements ReactiveStreamsEngine {
   public <T> Publisher<T> buildPublisher(Iterable<Stage> stages) throws UnsupportedStageException {
     Source source = null;
     Flow flow = Flow.create();
-    for (Stage stage: stages) {
+    for (Stage stage : stages) {
       if (source == null) {
         source = toSource(stage);
       } else {
@@ -56,7 +56,7 @@ public class AkkaEngine implements ReactiveStreamsEngine {
   @Override
   public <T, R> SubscriberWithResult<T, R> buildSubscriber(Iterable<Stage> stages) throws UnsupportedStageException {
     Flow flow = Flow.create();
-    for (Stage stage: stages) {
+    for (Stage stage : stages) {
       if (stage.hasOutlet()) {
         flow = applyStage(flow, stage);
       } else {
@@ -74,7 +74,7 @@ public class AkkaEngine implements ReactiveStreamsEngine {
   @Override
   public <T, R> Processor<T, R> buildProcessor(Iterable<Stage> stages) throws UnsupportedStageException {
     Flow flow = Flow.create();
-    for (Stage stage: stages) {
+    for (Stage stage : stages) {
       flow = applyStage(flow, stage);
     }
     return (Processor<T, R>) JavaFlowSupport.Flow.toProcessor(flow).run(materializer);
@@ -84,10 +84,10 @@ public class AkkaEngine implements ReactiveStreamsEngine {
   public <T> CompletionStage<T> buildCompletion(Iterable<Stage> stages) throws UnsupportedStageException {
     Source source = null;
     Flow flow = Flow.create();
-    for (Stage stage: stages) {
+    for (Stage stage : stages) {
       if (source == null) {
         source = toSource(stage);
-      } else if (stage.hasOutlet()){
+      } else if (stage.hasOutlet()) {
         flow = applyStage(flow, stage);
       } else {
         return (CompletionStage) source.via(flow).runWith(toSink(stage), materializer);

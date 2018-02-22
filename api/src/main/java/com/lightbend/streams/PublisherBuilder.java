@@ -37,7 +37,7 @@ public final class PublisherBuilder<T> extends ReactiveStreamsBuilder<Publisher<
    * Map the elements emitted by this publisher using the <code>mapper</code> function.
    *
    * @param mapper The function to use to map the elements.
-   * @param <R> The type of elements that the <code>mapper</code> function emits.
+   * @param <R>    The type of elements that the <code>mapper</code> function emits.
    * @return A new publisher builder that emits the mapped elements.
    */
   public <R> PublisherBuilder<R> map(Function<? super T, ? extends R> mapper) {
@@ -46,7 +46,7 @@ public final class PublisherBuilder<T> extends ReactiveStreamsBuilder<Publisher<
 
   /**
    * Filter elements emitted by this publisher using the given {@link Predicate}.
-   *
+   * <p>
    * Any elements that return <code>true</code> when passed to the {@link Predicate} will be emitted, all other
    * elements will be dropped.
    *
@@ -60,7 +60,7 @@ public final class PublisherBuilder<T> extends ReactiveStreamsBuilder<Publisher<
   /**
    * Find the first element emitted by the {@link Publisher}, and return it in a
    * {@link java.util.concurrent.CompletionStage}.
-   *
+   * <p>
    * If the stream is completed before a single element is emitted, then {@link Optional#empty()} will be emitted.
    *
    * @return A {@link CompletionBuilder} that emits the element when found.
@@ -71,13 +71,13 @@ public final class PublisherBuilder<T> extends ReactiveStreamsBuilder<Publisher<
 
   /**
    * Collect the elements emitted by this publisher builder using the given {@link Collector}.
-   *
+   * <p>
    * Since Reactive Streams are intrinsically sequential, only the accumulator of the collector will be used, the
    * combiner will not be used.
    *
    * @param collector The collector to collect the elements.
-   * @param <R> The result of the collector.
-   * @param <A> The accumulator type.
+   * @param <R>       The result of the collector.
+   * @param <A>       The accumulator type.
    * @return A {@link CompletionBuilder} that emits the collected result.
    */
   public <R, A> CompletionBuilder<R> collect(Collector<? super T, A, R> collector) {
