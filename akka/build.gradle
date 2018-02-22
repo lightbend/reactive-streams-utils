@@ -1,0 +1,10 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    api project(":api")
+    implementation "com.typesafe.akka:akka-stream_2.12:2.5.9"
+
+    testCompile project(":tck")
+}

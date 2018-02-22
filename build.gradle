@@ -1,0 +1,10 @@
+subprojects {
+  afterEvaluate {
+    repositories {
+
+      mavenLocal()
+      mavenCentral()
+
+    }
+  }
+}
