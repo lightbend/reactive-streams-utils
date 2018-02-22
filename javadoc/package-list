@@ -1,0 +1,5 @@
+com.lightbend.streams
+com.lightbend.streams.akka
+com.lightbend.streams.examples
+com.lightbend.streams.spi
+com.lightbend.streams.tck

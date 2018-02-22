@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"com.lightbend.streams"},{"l":"com.lightbend.streams.akka"},{"l":"com.lightbend.streams.examples"},{"l":"com.lightbend.streams.spi"},{"l":"com.lightbend.streams.tck"}]
