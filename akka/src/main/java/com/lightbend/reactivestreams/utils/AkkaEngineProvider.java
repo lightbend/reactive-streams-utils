@@ -16,18 +16,29 @@ import akka.actor.BootstrapSetup;
 import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
 import com.typesafe.config.ConfigFactory;
+import org.reactivestreams.utils.ReactiveStreamsEngine;
+import org.reactivestreams.utils.SubscriberWithResult;
+import org.reactivestreams.utils.spi.Graph;
+import org.reactivestreams.utils.spi.UnsupportedStageException;
 import scala.compat.java8.FutureConverters;
 
 import java.lang.ref.Cleaner;
 import java.lang.ref.WeakReference;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Flow;
 import java.util.concurrent.ForkJoinPool;
 
 /**
  * Provides the Akka Engine to the JDK9 modules system.
  * <p>
- * This will instantiate its own actor systems to
+ * This will instantiate its own actor systems to run the streams. It uses weak references and a cleaner to ensure
+ * that the actor system gets cleaned up.
+ * <p>
+ * While JDK9 modules provided using a module descriptor can provide static method, right now we're providing this
+ * module as a classpath service, and that doesn't support static methods. So, when used as an engine, this class
+ * itself is used as the engine, and delegates to the actual engine, which has a weak reference kept to it.
  */
-public class AkkaEngineProvider {
+public class AkkaEngineProvider implements ReactiveStreamsEngine {
 
   /**
    * Used to clean up the actor system when the engine is no longer strongly referenceable.
@@ -117,5 +128,31 @@ public class AkkaEngineProvider {
     }
 
     return engine;
+  }
+
+  private final AkkaEngine delegate;
+
+  public AkkaEngineProvider() {
+    this.delegate = provider();
+  }
+
+  @Override
+  public <T> Flow.Publisher<T> buildPublisher(Graph graph) throws UnsupportedStageException {
+    return delegate.buildPublisher(graph);
+  }
+
+  @Override
+  public <T, R> SubscriberWithResult<T, R> buildSubscriber(Graph graph) throws UnsupportedStageException {
+    return delegate.buildSubscriber(graph);
+  }
+
+  @Override
+  public <T, R> Flow.Processor<T, R> buildProcessor(Graph graph) throws UnsupportedStageException {
+    return delegate.buildProcessor(graph);
+  }
+
+  @Override
+  public <T> CompletionStage<T> buildCompletion(Graph graph) throws UnsupportedStageException {
+    return delegate.buildCompletion(graph);
   }
 }

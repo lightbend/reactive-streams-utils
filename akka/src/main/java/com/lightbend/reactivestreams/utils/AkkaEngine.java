@@ -12,6 +12,7 @@
 package com.lightbend.reactivestreams.utils;
 
 import akka.NotUsed;
+import akka.stream.Attributes;
 import akka.stream.Materializer;
 import akka.stream.javadsl.*;
 import org.reactivestreams.utils.ReactiveStreamsEngine;
@@ -34,12 +35,11 @@ import java.util.stream.Collector;
  */
 public class AkkaEngine implements ReactiveStreamsEngine {
 
-  private final Materializer materializer;
+  final Materializer materializer;
 
   public AkkaEngine(Materializer materializer) {
     this.materializer = materializer;
   }
-
 
   @Override
   public <T> Publisher<T> buildPublisher(Graph graph) throws UnsupportedStageException {
@@ -49,8 +49,8 @@ public class AkkaEngine implements ReactiveStreamsEngine {
       return (Publisher) ((Stage.Publisher) firstStage).getPublisher();
     }
 
-    return this.<T>buildSource(graph)
-        .runWith(JavaFlowSupport.Sink.asPublisher(AsPublisher.WITHOUT_FANOUT), materializer);
+    return materialize(this.<T>buildSource(graph)
+        .toMat(JavaFlowSupport.Sink.asPublisher(AsPublisher.WITHOUT_FANOUT), Keep.right()));
   }
 
   private <T> Source<T, NotUsed> buildSource(Graph graph) throws UnsupportedStageException {
@@ -74,11 +74,10 @@ public class AkkaEngine implements ReactiveStreamsEngine {
       if (stage.hasOutlet()) {
         flow = applyStage(flow, stage);
       } else {
-        return (SubscriberWithResult) JavaFlowSupport.Source.asSubscriber()
+        return (SubscriberWithResult) materialize(JavaFlowSupport.Source.asSubscriber()
             .via(flow)
             .toMat(toSink(stage), (subscriber, result) ->
-                new SubscriberWithResult((Subscriber) subscriber, (CompletionStage) result))
-            .run(materializer);
+                new SubscriberWithResult((Subscriber) subscriber, (CompletionStage) result)));
       }
     }
 
@@ -97,7 +96,7 @@ public class AkkaEngine implements ReactiveStreamsEngine {
     for (Stage stage : graph.getStages()) {
       flow = applyStage(flow, stage);
     }
-    return (Processor) JavaFlowSupport.Flow.toProcessor(flow).run(materializer);
+    return (Processor) materialize(JavaFlowSupport.Flow.toProcessor(flow));
   }
 
   @Override
@@ -110,7 +109,7 @@ public class AkkaEngine implements ReactiveStreamsEngine {
       } else if (stage.hasOutlet()) {
         flow = applyStage(flow, stage);
       } else {
-        return (CompletionStage) source.via(flow).runWith(toSink(stage), materializer);
+        return (CompletionStage) materialize(source.via(flow).toMat(toSink(stage), Keep.right()));
       }
     }
 
@@ -207,4 +206,26 @@ public class AkkaEngine implements ReactiveStreamsEngine {
       throw new IllegalStateException("Got " + stage + " but needed a stage with an outlet and no inlet.");
     }
   }
+
+  private <T> T materialize(RunnableGraph<T> graph) {
+    return graph.addAttributes(akkaEngineAttributes).run(materializer);
+  }
+
+  /**
+   * This attribute does nothing except ensures a reference to this AkkaEngine is kept by the running stream.
+   *
+   * This is to prevent the cleaner used in the AkkaEngineProvider from finding that the AkkaEngine is unreachable
+   * while a stream is still running, and shut the engine down. Once all streams stop running, the stream actor will
+   * be disposed and the engine will become unreachable (as long as no user code references it), then it can be shut
+   * down.
+   */
+  private class AkkaEngineAttribute implements Attributes.Attribute {
+    /**
+     * Technically not needed since this is a non static inner class and so holds this reference anyway, but this
+     * makes it explicit, ensuring someone doesn't unhelpfully make this class static in future.
+     */
+    private final AkkaEngine akkaEngine = AkkaEngine.this;
+  }
+
+  private final Attributes akkaEngineAttributes = Attributes.apply(new AkkaEngineAttribute());
 }
