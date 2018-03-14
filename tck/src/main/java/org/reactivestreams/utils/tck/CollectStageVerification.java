@@ -14,8 +14,6 @@ package org.reactivestreams.utils.tck;
 import org.reactivestreams.utils.ReactiveStreams;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Flow;
 import java.util.stream.Collectors;
@@ -31,13 +29,13 @@ public class CollectStageVerification extends AbstractStageVerification {
   @Test
   public void toListStageShouldReturnAList() {
     assertEquals(await(ReactiveStreams.of(1, 2, 3)
-        .toList().build(engine)), Arrays.asList(1, 2, 3));
+        .toList().build(engine)), List.of(1, 2, 3));
   }
 
   @Test
   public void toListStageShouldReturnEmpty() {
     assertEquals(await(ReactiveStreams.of()
-        .toList().build(engine)), Collections.emptyList());
+        .toList().build(engine)), List.of());
   }
 
   @Test
@@ -54,7 +52,7 @@ public class CollectStageVerification extends AbstractStageVerification {
 
   @Override
   List<Object> reactiveStreamsTckVerifiers() {
-    return Collections.singletonList(new SubscriberVerification());
+    return List.of(new SubscriberVerification());
   }
 
   class SubscriberVerification extends StageSubscriberBlackboxVerification<Integer> {

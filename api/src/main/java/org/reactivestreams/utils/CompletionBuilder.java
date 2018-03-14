@@ -33,6 +33,6 @@ public final class CompletionBuilder<T> extends ReactiveStreamsBuilder<Completio
 
   @Override
   public CompletionStage<T> build(ReactiveStreamsEngine engine) {
-    return engine.buildCompletion(verify(flatten(), false, false));
+    return engine.buildCompletion(toGraph(false, false));
   }
 }

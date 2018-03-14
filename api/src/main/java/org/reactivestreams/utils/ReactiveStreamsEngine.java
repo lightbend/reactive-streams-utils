@@ -11,7 +11,7 @@
 
 package org.reactivestreams.utils;
 
-import org.reactivestreams.utils.spi.Stage;
+import org.reactivestreams.utils.spi.Graph;
 import org.reactivestreams.utils.spi.UnsupportedStageException;
 
 import java.util.concurrent.CompletionStage;
@@ -30,55 +30,51 @@ public interface ReactiveStreamsEngine {
   /**
    * Build a {@link Publisher} from the given stages.
    * <p>
-   * The following invariant will always hold true for the stages - every stage will have an outlet, while the first
-   * stage will have no inlet, but every subsequent stage will have an inlet.
+   * The passed in graph will have an outlet and no inlet.
    *
-   * @param stages The stages to build the publisher from. Will not be empty.
-   * @param <T>    The type of elements that the publisher publishes.
+   * @param graph The stages to build the publisher from. Will not be empty.
+   * @param <T>   The type of elements that the publisher publishes.
    * @return A publisher that implements the passed in graph of stages.
    * @throws UnsupportedStageException If a stage in the stages is not supported by this Reactive Streams engine.
    */
-  <T> Publisher<T> buildPublisher(Iterable<Stage> stages) throws UnsupportedStageException;
+  <T> Publisher<T> buildPublisher(Graph graph) throws UnsupportedStageException;
 
   /**
    * Build a {@link Subscriber} from the given stages.
    * <p>
-   * The following invariant will always hold true for the stages - every stage will have an inlet, while the last
-   * stage will have no outlet, but every prior stage will have an outlet.
+   * The passed in graph will have an inlet and no outlet.
    *
-   * @param stages The stages to build the subscriber from. Will not be empty.
-   * @param <T>    The type of elements that the subscriber subscribes to.
-   * @param <R>    The result of subscribing to the stages.
+   * @param graph The graph to build the subscriber from. Will not be empty.
+   * @param <T>   The type of elements that the subscriber subscribes to.
+   * @param <R>   The result of subscribing to the stages.
    * @return A subscriber that implements the passed in graph of stages.
    * @throws UnsupportedStageException If a stage in the stages is not supported by this Reactive Streams engine.
    */
-  <T, R> SubscriberWithResult<T, R> buildSubscriber(Iterable<Stage> stages) throws UnsupportedStageException;
+  <T, R> SubscriberWithResult<T, R> buildSubscriber(Graph graph) throws UnsupportedStageException;
 
   /**
    * Build a {@link Processor} from the given stages.
    * <p>
-   * The following invariant will always hold true for the stages - every stage will have both an inlet and an outlet.
+   * The passed in graph will have an inlet and an outlet.
    *
-   * @param stages The stages to build the processor from. If empty, then the processor should be an identity processor.
-   * @param <T>    The type of elements that the processor subscribes to.
-   * @param <R>    The type of elements that the processor publishes.
+   * @param graph The graph to build the processor from. If empty, then the processor should be an identity processor.
+   * @param <T>   The type of elements that the processor subscribes to.
+   * @param <R>   The type of elements that the processor publishes.
    * @return A processor that implements the passed in graph of stages.
    * @throws UnsupportedStageException If a stage in the stages is not supported by this Reactive Streams engine.
    */
-  <T, R> Processor<T, R> buildProcessor(Iterable<Stage> stages) throws UnsupportedStageException;
+  <T, R> Processor<T, R> buildProcessor(Graph graph) throws UnsupportedStageException;
 
   /**
    * Build a closed graph from the given stages.
    * <p>
-   * The following invariant will always hold true for the stages - the first stage will have no inlet but will have
-   * an outlet, the last stage will have an inlet but no outlet, and every other stage will have both an inlet and an
-   * outlet.
+   * The passed in graph will have no inlet and no outlet.
    *
-   * @param stages The stages to build the closed graph from. Will not be empty.
-   * @param <T>    The type of the result of running the closed graph.
+   * @param graph The graph to build the closed graph from. Will not be empty.
+   * @param <T>   The type of the result of running the closed graph.
    * @return A CompletionStage of the result of running the graph.
    * @throws UnsupportedStageException If a stage in the stages is not supported by this reactive streams engine.
    */
-  <T> CompletionStage<T> buildCompletion(Iterable<Stage> stages) throws UnsupportedStageException;
+  <T> CompletionStage<T> buildCompletion(Graph graph) throws UnsupportedStageException;
 
 }

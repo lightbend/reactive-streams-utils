@@ -11,6 +11,7 @@
 
 package org.reactivestreams.utils;
 
+import org.reactivestreams.utils.spi.Graph;
 import org.reactivestreams.utils.spi.Stage;
 
 import java.util.*;
@@ -54,59 +55,28 @@ public abstract class ReactiveStreamsBuilder<S> {
    */
   public abstract S build(ReactiveStreamsEngine engine);
 
-  Iterable<Stage> flatten() {
+  Graph toGraph(boolean expectInlet, boolean expectOutlet) {
     ArrayDeque<Stage> deque = new ArrayDeque<>();
     flatten(deque);
-    return Collections.unmodifiableCollection(deque);
-  }
+    Graph graph = new Graph(Collections.unmodifiableCollection(deque));
 
-  /**
-   * Verifies the invariants of the list of stages passed to the ReactiveStreamsEngine methods.
-   * <p>
-   * This adds nothing to the functionality of the API, except for a sanity check of the APIs own operations, to catch
-   * bugs etc. It ensures that the graph makes sense - eg, that the adjacent stages have an outlet and an inlet, and
-   * will throw an error for example if you have a publisher followed by another publisher in the graph.
-   */
-  Iterable<Stage> verify(Iterable<Stage> stages, boolean requireInlet, boolean requireOutlet) {
-
-    boolean expectInlet = requireInlet;
-    Stage lastStage = null;
-
-    for (Stage stage : stages) {
-      if (lastStage != null && !lastStage.hasOutlet()) {
-        throw new IllegalStateException("Graph required an outlet from the previous stage " + lastStage + " but none was found.");
+    if (expectInlet) {
+      if (!graph.hasInlet()) {
+        throw new IllegalStateException("Expected to build a graph with an inlet, but no inlet was found: " + graph);
       }
-
-      if (expectInlet) {
-        if (!stage.hasInlet()) {
-          throw new IllegalStateException("Graph required an inlet, but had " + stage + " instead.");
-        }
-      } else {
-        if (stage.hasInlet()) {
-          throw new IllegalStateException("Graph should not start with an inlet, but found one at " + stage);
-        }
-        expectInlet = true;
-      }
-
-      lastStage = stage;
+    } else if (graph.hasInlet()) {
+      throw new IllegalStateException("Expected to build a graph with no inlet, but an inlet was found: " + graph);
     }
 
-    if (lastStage == null) {
-      // Special case, empty graph
-      if (!requireOutlet || !requireInlet) {
-        throw new IllegalStateException("Graph with empty stages must have an inlet and an outlet");
+    if (expectOutlet) {
+      if (!graph.hasOutlet()) {
+        throw new IllegalStateException("Expected to build a graph with an outlet, but no outlet was found: " + graph);
       }
-    } else if (requireOutlet) {
-      if (!lastStage.hasOutlet()) {
-        throw new IllegalStateException("Graph should terminate with an outlet, but none was found at " + lastStage);
-      }
-    } else {
-      if (lastStage.hasOutlet()) {
-        throw new IllegalStateException("Graph should terminate with no outlet, but an outlet was found at " + lastStage);
-      }
+    } else if (graph.hasOutlet()) {
+      throw new IllegalStateException("Expected to build a graph with no outlet, but an outlet was found: " + graph);
     }
 
-    return stages;
+    return graph;
   }
 
   private void flatten(Deque<Stage> stages) {

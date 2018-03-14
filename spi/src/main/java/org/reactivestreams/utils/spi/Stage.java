@@ -11,9 +11,13 @@
 
 package org.reactivestreams.utils.spi;
 
+import java.util.Collections;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collector;
 
 /**
@@ -90,15 +94,15 @@ public interface Stage {
   /**
    * A filter stage.
    * <p>
-   * The given predicate should be invoked on each element consumed, and if it returns true, the element should be
-   * emitted.
+   * The given predicate should be supplied when the stream is first run, and then invoked on each element consumed.
+   * If it returns true, the element should be emitted.
    * <p>
-   * Any {@link RuntimeException} thrown by the function should be propagated down the stream as an error.
+   * Any {@link RuntimeException} thrown by the predicate should be propagated down the stream as an error.
    */
   final class Filter implements Inlet, Outlet {
-    private final Predicate<?> predicate;
+    private final Supplier<Predicate<?>> predicate;
 
-    public Filter(Predicate<?> predicate) {
+    public Filter(Supplier<Predicate<?>> predicate) {
       this.predicate = predicate;
     }
 
@@ -107,8 +111,43 @@ public interface Stage {
      *
      * @return The predicate.
      */
-    public Predicate<?> getPredicate() {
+    public Supplier<Predicate<?>> getPredicate() {
       return predicate;
+    }
+  }
+
+  /**
+   * A take while stage.
+   * <p>
+   * The given predicate should be supplied when the stream is first run, and then invoked on each element consumed.
+   * When it returns true, the element should be emitted, when it returns false, the element should only be emitted if
+   * inclusive is true, and then the stream should be completed.
+   * <p>
+   * Any {@link RuntimeException} thrown by the predicate should be propagated down the stream as an error.
+   */
+  final class TakeWhile implements Inlet, Outlet {
+    private final Supplier<Predicate<?>> predicate;
+    private final boolean inclusive;
+
+    public TakeWhile(Supplier<Predicate<?>> predicate, boolean inclusive) {
+      this.predicate = predicate;
+      this.inclusive = inclusive;
+    }
+
+    /**
+     * The predicate.
+     *
+     * @return The predicate.
+     */
+    public Supplier<Predicate<?>> getPredicate() {
+      return predicate;
+    }
+
+    /**
+     * Whether the element that this returns false on should be emitted or not.
+     */
+    public boolean isInclusive() {
+      return inclusive;
     }
   }
 
@@ -136,51 +175,17 @@ public interface Stage {
   }
 
   /**
-   * A single element publisher stage.
-   * <p>
-   * When built, should produce a publisher that emits the single element, then completes the stream.
-   */
-  final class OfSingle implements Outlet {
-    private final Object element;
-
-    public OfSingle(Object element) {
-      this.element = element;
-    }
-
-    /**
-     * The element to emit.
-     *
-     * @return The element.
-     */
-    public Object getElement() {
-      return element;
-    }
-  }
-
-  /**
-   * An empty publisher stage.
-   * <p>
-   * When built, should produce a publisher that simply completes the stream.
-   */
-  final class Empty implements Outlet {
-    private Empty() {
-    }
-
-    public static final Empty INSTANCE = new Empty();
-  }
-
-  /**
-   * A publisher of many values.
+   * A publisher of zero to many values.
    * <p>
    * When built, should produce a publisher that produces all the values (until cancelled) emitted by this iterables
    * iterator, followed by completion of the stream.
    * <p>
    * Any exceptions thrown by the iterator must be propagated downstream.
    */
-  final class OfMany implements Outlet {
+  final class Of implements Outlet {
     private final java.lang.Iterable<?> elements;
 
-    public OfMany(java.lang.Iterable<?> elements) {
+    public Of(java.lang.Iterable<?> elements) {
       this.elements = elements;
     }
 
@@ -192,6 +197,8 @@ public interface Stage {
     public java.lang.Iterable<?> getElements() {
       return elements;
     }
+
+    public static Of EMPTY = new Of(Collections.emptyList());
   }
 
   /**
@@ -277,8 +284,113 @@ public interface Stage {
       this.collector = collector;
     }
 
+    /**
+     * The collector.
+     *
+     * @return The collector.
+     */
     public Collector<?, ?, ?> getCollector() {
       return collector;
+    }
+  }
+
+  /**
+   * A for each stage.
+   *
+   * The for each stage should execute the given action on each element encountered in the stream. Furthermore, the
+   * for each stage should materialize into a {@link CompletionStage} of {@link Void}, which is redeemed when the
+   * stream completes, either successfully or with an error.
+   */
+  final class ForEach implements Inlet {
+    private final Consumer<?> action;
+
+    public ForEach(Consumer<?> action) {
+      this.action = action;
+    }
+
+    /**
+     * The action to consume each element.
+     *
+     * @return The action.
+     */
+    public Consumer<?> getAction() {
+      return action;
+    }
+  }
+
+  /**
+   * A flat map stage.
+   *
+   * The flat map stage should execute the given mapper on each element, and concatenate the publishers emitted by
+   * the mapper function into the resulting stream.
+   *
+   * The graph emitted by the mapper function is guaranteed to have an outlet but no inlet.
+   *
+   * The engine must be careful to ensure only one publisher emitted by the mapper function is running at a time.
+   */
+  final class FlatMap implements Inlet, Outlet {
+    private final Function<?, Graph> mapper;
+
+    public FlatMap(Function<?, Graph> mapper) {
+      this.mapper = mapper;
+    }
+
+    /**
+     * The mapper function.
+     *
+     * @return The mapper function.
+     */
+    public Function<?, Graph> getMapper() {
+      return mapper;
+    }
+  }
+
+  /**
+   * A flat map stage that emits and flattens {@link CompletionStage}.
+   *
+   * The flat map stage should execute the given mapper on each element, and concatenate the values redeemed by the
+   * {@link CompletionStage}'s emitted by the mapper function into the resulting stream.
+   *
+   * The engine must be careful to ensure only one mapper function is executed at a time, with the next mapper function
+   * not executing until the {@link CompletionStage} returned by the previous mapper function has been redeemed.
+   */
+  final class FlatMapCompletionStage implements Inlet, Outlet {
+    private final Function<?, CompletionStage<?>> mapper;
+
+    public FlatMapCompletionStage(Function<?, CompletionStage<?>> mapper) {
+      this.mapper = mapper;
+    }
+
+    /**
+     * The mapper function.
+     *
+     * @return The mapper function.
+     */
+    public Function<?, CompletionStage<?>> getMapper() {
+      return mapper;
+    }
+  }
+
+  /**
+   * A flat map stage that emits and fattens {@link Iterable}.
+   *
+   * The flat map stage should execute the given mapper on each element, and concatenate the iterables emitted by
+   * the mapper function into the resulting stream.
+   */
+  final class FlatMapIterable implements Inlet, Outlet {
+    private final Function<?, Iterable<?>> mapper;
+
+    public FlatMapIterable(Function<?, Iterable<?>> mapper) {
+      this.mapper = mapper;
+    }
+
+    /**
+     * The mapper function.
+     *
+     * @return The mapper function.
+     */
+    public Function<?, Iterable<?>> getMapper() {
+      return mapper;
     }
   }
 

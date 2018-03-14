@@ -14,8 +14,6 @@ package org.reactivestreams.utils.tck;
 import org.reactivestreams.utils.ReactiveStreams;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Flow;
 import java.util.function.Function;
@@ -33,7 +31,7 @@ public class MapStageVerification extends AbstractStageVerification {
     assertEquals(await(ReactiveStreams.of(1, 2, 3)
         .map(Object::toString)
         .toList()
-        .build(engine)), Arrays.asList("1", "2", "3"));
+        .build(engine)), List.of("1", "2", "3"));
   }
 
   @Test(expectedExceptions = RuntimeException.class, expectedExceptionsMessageRegExp = "failed")
@@ -48,7 +46,7 @@ public class MapStageVerification extends AbstractStageVerification {
 
   @Override
   List<Object> reactiveStreamsTckVerifiers() {
-    return Collections.singletonList(
+    return List.of(
         new ProcessorVerification()
     );
   }

@@ -14,6 +14,7 @@ package org.reactivestreams.utils;
 import org.reactivestreams.utils.spi.Stage;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.Flow.*;
 
 /**
@@ -89,7 +90,7 @@ public class ReactiveStreams {
    * @param <T>       The type of the elements that the publisher produces.
    * @return A publisher builder that wraps the given publisher.
    */
-  public static <T> PublisherBuilder<T> fromPublisher(Publisher<? super T> publisher) {
+  public static <T> PublisherBuilder<T> fromPublisher(Publisher<? extends T> publisher) {
     return new PublisherBuilder<>(new Stage.Publisher(publisher), null);
   }
 
@@ -101,7 +102,7 @@ public class ReactiveStreams {
    * @return A publisher builder that will emit the element.
    */
   public static <T> PublisherBuilder<T> of(T t) {
-    return new PublisherBuilder<>(new Stage.OfSingle(t), null);
+    return new PublisherBuilder<>(new Stage.Of(List.of(t)), null);
   }
 
   /**
@@ -112,7 +113,7 @@ public class ReactiveStreams {
    * @return A publisher builder that will emit the elements.
    */
   public static <T> PublisherBuilder<T> of(T... ts) {
-    return fromIterable(Arrays.asList(ts));
+    return fromIterable(List.of(ts));
   }
 
   /**
@@ -122,7 +123,7 @@ public class ReactiveStreams {
    * @return A publisher builder that will just emit a completion signal.
    */
   public static <T> PublisherBuilder<T> empty() {
-    return new PublisherBuilder<>(Stage.Empty.INSTANCE, null);
+    return new PublisherBuilder<>(Stage.Of.EMPTY, null);
   }
 
   /**
@@ -145,7 +146,7 @@ public class ReactiveStreams {
    * @return A publisher builder that emits the elements of the iterable.
    */
   public static <T> PublisherBuilder<T> fromIterable(Iterable<? super T> ts) {
-    return new PublisherBuilder<>(new Stage.OfMany(ts), null);
+    return new PublisherBuilder<>(new Stage.Of(ts), null);
   }
 
   /**

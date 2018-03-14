@@ -15,7 +15,7 @@ import akka.actor.ActorSystem;
 import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
 import org.reactivestreams.utils.ReactiveStreamsEngine;
-import com.lightbend.reactivestreams.utils.AkkaEngine;
+import org.reactivestreams.utils.tck.FlatMapStageVerification;
 import org.reactivestreams.utils.tck.ReactiveStreamsTck;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.AfterSuite;
@@ -30,6 +30,7 @@ public class AkkaReactiveStreamsTck extends ReactiveStreamsTck<AkkaEngine> {
   }
 
   private ActorSystem system;
+  private Materializer materializer;
 
   @AfterSuite
   public void shutdownActorSystem() {
@@ -41,7 +42,13 @@ public class AkkaReactiveStreamsTck extends ReactiveStreamsTck<AkkaEngine> {
   @Override
   protected AkkaEngine createEngine() {
     system = ActorSystem.create();
-    Materializer materializer = ActorMaterializer.create(system);
+    materializer = ActorMaterializer.create(system);
     return new AkkaEngine(materializer);
+  }
+
+  @Override
+  protected boolean isEnabled(Object test) {
+    // Disabled due to https://github.com/akka/akka/issues/24719
+    return !(test instanceof FlatMapStageVerification.InnerSubscriberVerification);
   }
 }

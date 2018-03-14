@@ -15,14 +15,18 @@ import hu.akarnokd.rxjava2.interop.FlowInterop;
 import hu.akarnokd.rxjava2.interop.FlowableInterop;
 import hu.akarnokd.rxjava2.interop.SingleInterop;
 import io.reactivex.Flowable;
+import io.reactivex.disposables.Disposable;
 import org.reactivestreams.utils.ReactiveStreamsEngine;
 import org.reactivestreams.utils.SubscriberWithResult;
+import org.reactivestreams.utils.spi.Graph;
 import org.reactivestreams.utils.spi.Stage;
 import org.reactivestreams.utils.spi.UnsupportedStageException;
 
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collector;
@@ -30,24 +34,28 @@ import java.util.stream.Collector;
 public class RxJavaEngine implements ReactiveStreamsEngine {
 
   @Override
-  public <T> Flow.Publisher<T> buildPublisher(Iterable<Stage> stages) throws UnsupportedStageException {
+  public <T> Flow.Publisher<T> buildPublisher(Graph graph) throws UnsupportedStageException {
+    return FlowInterop.toFlowPublisher(this.buildFlowable(graph));
+  }
+
+  private <T> Flowable<T> buildFlowable(Graph graph) throws UnsupportedStageException {
     Flowable flowable = null;
-    for (Stage stage : stages) {
+    for (Stage stage : graph.getStages()) {
       if (flowable == null) {
         flowable = toFlowable(stage);
       } else {
         flowable = applyStage(flowable, stage);
       }
     }
-    return FlowInterop.toFlowPublisher(flowable);
+    return flowable;
   }
 
   @Override
-  public <T, R> SubscriberWithResult<T, R> buildSubscriber(Iterable<Stage> stages) throws UnsupportedStageException {
+  public <T, R> SubscriberWithResult<T, R> buildSubscriber(Graph graph) throws UnsupportedStageException {
     Flow.Processor processor = new BridgedProcessor();
 
     Flowable flowable = FlowInterop.fromFlowProcessor(processor);
-    for (Stage stage : stages) {
+    for (Stage stage : graph.getStages()) {
       if (stage.hasOutlet()) {
         flowable = applyStage(flowable, stage);
       } else {
@@ -61,11 +69,11 @@ public class RxJavaEngine implements ReactiveStreamsEngine {
   }
 
   @Override
-  public <T, R> Flow.Processor<T, R> buildProcessor(Iterable<Stage> stages) throws UnsupportedStageException {
+  public <T, R> Flow.Processor<T, R> buildProcessor(Graph graph) throws UnsupportedStageException {
     Flow.Processor processor = new BridgedProcessor();
 
     Flowable flowable = FlowInterop.fromFlowProcessor(processor);
-    for (Stage stage : stages) {
+    for (Stage stage : graph.getStages()) {
       flowable = applyStage(flowable, stage);
     }
 
@@ -73,9 +81,9 @@ public class RxJavaEngine implements ReactiveStreamsEngine {
   }
 
   @Override
-  public <T> CompletionStage<T> buildCompletion(Iterable<Stage> stages) throws UnsupportedStageException {
+  public <T> CompletionStage<T> buildCompletion(Graph graph) throws UnsupportedStageException {
     Flowable flowable = null;
-    for (Stage stage : stages) {
+    for (Stage stage : graph.getStages()) {
       if (flowable == null) {
         flowable = toFlowable(stage);
       } else if (stage.hasOutlet()) {
@@ -93,8 +101,25 @@ public class RxJavaEngine implements ReactiveStreamsEngine {
       Function<Object, Object> mapper = (Function) ((Stage.Map) stage).getMapper();
       return flowable.map(mapper::apply);
     } else if (stage instanceof Stage.Filter) {
-      Predicate<Object> predicate = (Predicate) (((Stage.Filter) stage).getPredicate());
+      Predicate<Object> predicate = (Predicate) (((Stage.Filter) stage).getPredicate()).get();
       return flowable.filter(predicate::test);
+    } else if (stage instanceof Stage.TakeWhile) {
+      Predicate<Object> predicate = (Predicate) (((Stage.TakeWhile) stage).getPredicate()).get();
+      boolean inclusive = ((Stage.TakeWhile) stage).isInclusive();
+      if (inclusive) {
+        return flowable.takeUntil(element -> !predicate.test(element));
+      } else {
+        return flowable.takeWhile(predicate::test);
+      }
+    } else if (stage instanceof Stage.FlatMap) {
+      Function<Object, Graph> mapper = (Function) ((Stage.FlatMap) stage).getMapper();
+      return flowable.concatMap(e -> buildFlowable(mapper.apply(e)));
+    } else if (stage instanceof Stage.FlatMapCompletionStage) {
+      Function<Object, CompletionStage<Object>> mapper = (Function) ((Stage.FlatMapCompletionStage) stage).getMapper();
+      return flowable.concatMap(e -> SingleInterop.fromFuture(mapper.apply(e)).toFlowable(), 1);
+    } else if (stage instanceof Stage.FlatMapIterable) {
+      Function<Object, Iterable<Object>> mapper = (Function) ((Stage.FlatMapIterable) stage).getMapper();
+      return flowable.concatMapIterable(mapper::apply);
     } else if (stage instanceof Stage.Processor) {
       Flow.Processor<Object, Object> processor = (Flow.Processor) (((Stage.Processor) stage).getProcessor());
       flowable.subscribe(new FlowSubscriberAdapter(processor));
@@ -123,7 +148,19 @@ public class RxJavaEngine implements ReactiveStreamsEngine {
         // Shouldn't happen
         throw new RuntimeException("Unexpected error", e);
       }
-    } else if (stage instanceof Stage.Subscriber) {
+    } else if (stage instanceof Stage.ForEach) {
+      CompletableFuture<Void> done = new CompletableFuture<>();
+      Consumer action = ((Stage.ForEach) stage).getAction();
+      flowable
+          .map(e -> {
+            action.accept(e);
+            return UNIT;
+          })
+          .doOnComplete(() -> done.complete(null))
+          .doOnError(error -> done.completeExceptionally((Throwable) error))
+          .forEach(e -> {});
+      return done;
+    } if (stage instanceof Stage.Subscriber) {
       Flow.Subscriber subscriber = ((Stage.Subscriber) stage).getSubscriber();
       TerminationWatchingSubscriber watchTermination = new TerminationWatchingSubscriber(subscriber);
       flowable.subscribe(new FlowSubscriberAdapter(watchTermination));
@@ -136,12 +173,8 @@ public class RxJavaEngine implements ReactiveStreamsEngine {
   }
 
   private Flowable toFlowable(Stage stage) {
-    if (stage instanceof Stage.OfMany) {
-      return Flowable.fromIterable(((Stage.OfMany) stage).getElements());
-    } else if (stage instanceof Stage.OfSingle) {
-      return Flowable.just(((Stage.OfSingle) stage).getElement());
-    } else if (stage instanceof Stage.Empty) {
-      return Flowable.empty();
+    if (stage instanceof Stage.Of) {
+      return Flowable.fromIterable(((Stage.Of) stage).getElements());
     } else if (stage instanceof Stage.Publisher) {
       return FlowInterop.fromFlowPublisher(((Stage.Publisher) stage).getPublisher());
     } else if (stage instanceof Stage.Failed) {
@@ -152,4 +185,6 @@ public class RxJavaEngine implements ReactiveStreamsEngine {
       throw new IllegalStateException("Got " + stage + " but needed a stage with an outlet and no inlet.");
     }
   }
+
+  private static final Object UNIT = new Object();
 }

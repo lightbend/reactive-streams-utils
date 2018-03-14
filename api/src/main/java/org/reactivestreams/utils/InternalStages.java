@@ -19,13 +19,15 @@ import org.reactivestreams.utils.spi.Stage;
  */
 class InternalStages {
 
+  interface InternalStage extends Stage {}
+
   /**
    * An identity stage - this stage simply passes is input to its output unchanged. It's used to represent processor
    * builders that have had no stages defined.
    * <p>
    * It gets ignored by the {@link ReactiveStreamsBuilder} when encountered.
    */
-  static final class Identity implements Stage.Inlet, Stage.Outlet {
+  static final class Identity implements InternalStage {
     private Identity() {
     }
 
@@ -38,7 +40,7 @@ class InternalStages {
    * <p>
    * It gets flattened out by the {@link ReactiveStreamsBuilder} when building the graph.
    */
-  static final class Nested implements Stage {
+  static final class Nested implements InternalStage {
     private final ReactiveStreamsBuilder stage;
 
     Nested(ReactiveStreamsBuilder stage) {

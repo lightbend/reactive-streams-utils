@@ -29,7 +29,7 @@ abstract class AbstractStageVerification {
 
   final ReactiveStreamsEngine engine;
   final TestEnvironment environment;
-  final ExecutorService executorService;
+  final ScheduledExecutorService executorService;
 
   AbstractStageVerification(ReactiveStreamsTck.VerificationDeps deps) {
     this.engine = deps.engine();

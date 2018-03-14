@@ -14,36 +14,58 @@ package org.reactivestreams.utils.tck;
 import org.reactivestreams.utils.ReactiveStreams;
 import org.testng.annotations.Test;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Flow;
+import java.util.stream.LongStream;
 
 import static org.testng.Assert.assertEquals;
 
-public class EmptyStageVerification extends AbstractStageVerification {
-  EmptyStageVerification(ReactiveStreamsTck.VerificationDeps deps) {
+public class OfStageVerification extends AbstractStageVerification {
+
+  OfStageVerification(ReactiveStreamsTck.VerificationDeps deps) {
     super(deps);
   }
 
   @Test
-  public void emptyStageShouldProduceEmptyStream() {
-    assertEquals(await(ReactiveStreams.empty().toList().build(engine)), Collections.emptyList());
+  public void iterableStageShouldEmitManyElements() {
+    assertEquals(await(
+        ReactiveStreams.of("a", "b", "c")
+            .toList()
+            .build(engine)
+    ), List.of("a", "b", "c"));
+  }
+
+  @Test
+  public void emptyIterableStageShouldEmitNoElements() {
+    assertEquals(await(
+        ReactiveStreams.empty()
+            .toList()
+            .build(engine)
+    ), List.of());
+  }
+
+  @Test
+  public void singleIterableStageShouldEmitOneElement() {
+    assertEquals(await(
+        ReactiveStreams.of("a")
+            .toList()
+            .build(engine)
+    ), List.of("a"));
   }
 
   @Override
   List<Object> reactiveStreamsTckVerifiers() {
-    return Collections.singletonList(new PublisherVerification());
+    return List.of(new PublisherVerification());
   }
 
-  class PublisherVerification extends StagePublisherVerification<String> {
+  class PublisherVerification extends StagePublisherVerification<Long> {
     @Override
-    public Flow.Publisher<String> createFlowPublisher(long elements) {
-      return ReactiveStreams.<String>empty().build(engine);
-    }
-
-    @Override
-    public long maxElementsFromPublisher() {
-      return 0;
+    public Flow.Publisher<Long> createFlowPublisher(long elements) {
+      return ReactiveStreams.fromIterable(
+          () -> LongStream.rangeClosed(1, elements).boxed().iterator()
+      ).build(engine);
     }
   }
+
+
 }

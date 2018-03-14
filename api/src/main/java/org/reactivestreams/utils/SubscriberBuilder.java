@@ -34,6 +34,6 @@ public final class SubscriberBuilder<T, R> extends ReactiveStreamsBuilder<Subscr
 
   @Override
   public SubscriberWithResult<T, R> build(ReactiveStreamsEngine engine) {
-    return engine.buildSubscriber(verify(flatten(), true, false));
+    return engine.buildSubscriber(toGraph(true, false));
   }
 }

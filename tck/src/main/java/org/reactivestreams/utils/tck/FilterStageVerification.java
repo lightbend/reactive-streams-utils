@@ -11,11 +11,10 @@
 
 package org.reactivestreams.utils.tck;
 
+import org.reactivestreams.utils.CompletionBuilder;
 import org.reactivestreams.utils.ReactiveStreams;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Flow;
 
@@ -32,7 +31,7 @@ public class FilterStageVerification extends AbstractStageVerification {
     assertEquals(await(ReactiveStreams.of(1, 2, 3, 4, 5, 6)
         .filter(i -> (i & 1) == 1)
         .toList()
-        .build(engine)), Arrays.asList(1, 3, 5));
+        .build(engine)), List.of(1, 3, 5));
   }
 
   @Test(expectedExceptions = RuntimeException.class, expectedExceptionsMessageRegExp = "failed")
@@ -45,9 +44,37 @@ public class FilterStageVerification extends AbstractStageVerification {
         .build(engine));
   }
 
+  @Test
+  public void filterStageShouldSupportSkip() {
+    assertEquals(await(ReactiveStreams.of(1, 2, 3, 4)
+        .skip(2)
+        .toList()
+        .build(engine)), List.of(3, 4));
+  }
+
+  @Test
+  public void filterStageShouldSupportDropWhile() {
+    assertEquals(await(ReactiveStreams.of(1, 2, 3, 4)
+        .dropWhile(i -> i < 3)
+        .toList()
+        .build(engine)), List.of(3, 4));
+  }
+
+  @Test
+  public void filterStageShouldInstantiatePredicateOncePerRun() {
+    CompletionBuilder<List<Integer>> completion =
+        ReactiveStreams.of(1, 2, 3, 4, 5, 6)
+            .skip(3)
+            .toList();
+
+    assertEquals(await(completion.build(engine)), List.of(4, 5, 6));
+    assertEquals(await(completion.build(engine)), List.of(4, 5, 6));
+  }
+
+
   @Override
   List<Object> reactiveStreamsTckVerifiers() {
-    return Collections.singletonList(
+    return List.of(
         new ProcessorVerification()
     );
   }

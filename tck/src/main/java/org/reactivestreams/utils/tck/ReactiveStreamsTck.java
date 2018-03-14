@@ -19,8 +19,8 @@ import org.testng.annotations.Factory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Function;
 
 /**
@@ -53,7 +53,15 @@ public abstract class ReactiveStreamsTck<E extends ReactiveStreamsEngine> {
     // By default, do nothing.
   }
 
+  /**
+   * Override this to disable/enable tests, useful for debugging one test at a time.
+   */
+  protected boolean isEnabled(Object test) {
+    return true;
+  }
+
   private E engine;
+  private ScheduledExecutorService executorService;
 
   @AfterSuite(alwaysRun = true)
   public void shutdownEngine() {
@@ -65,15 +73,19 @@ public abstract class ReactiveStreamsTck<E extends ReactiveStreamsEngine> {
   @Factory
   public Object[] allTests() {
     engine = createEngine();
+    executorService = Executors.newScheduledThreadPool(4);
 
     List<Function<VerificationDeps, AbstractStageVerification>> stageVerifications = Arrays.asList(
-        OfSingleStageVerification::new,
-        OfManyStageVerification::new,
-        EmptyStageVerification::new,
+        OfStageVerification::new,
         MapStageVerification::new,
+        FlatMapStageVerification::new,
         FilterStageVerification::new,
         FindFirstStageVerification::new,
-        CollectStageVerification::new
+        CollectStageVerification::new,
+        TakeWhileStageVerification::new,
+        FlatMapCompletionStageVerification::new,
+        FlatMapIterableStageVerification::new,
+        ForEachStageVerification::new
     );
 
     List<Object> allTests = new ArrayList<>();
@@ -84,7 +96,7 @@ public abstract class ReactiveStreamsTck<E extends ReactiveStreamsEngine> {
       allTests.addAll(stageVerification.reactiveStreamsTckVerifiers());
     }
 
-    return allTests.toArray();
+    return allTests.stream().filter(this::isEnabled).toArray();
   }
 
   class VerificationDeps {
@@ -96,8 +108,8 @@ public abstract class ReactiveStreamsTck<E extends ReactiveStreamsEngine> {
       return testEnvironment;
     }
 
-    ExecutorService executorService() {
-      return ForkJoinPool.commonPool();
+    ScheduledExecutorService executorService() {
+      return executorService;
     }
   }
 

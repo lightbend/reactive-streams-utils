@@ -39,14 +39,17 @@ Subscriber<ByteBuffer> subscriber =
     // Assume parseLines is a utility that converts a
     // stream of arbitrarily chunked ByteBuffers to
     // ByteBuffers that represent one line
-    .mapConcat(parseLines)
+    .flatMapIterable(parseLines)
     // Assume parseJson is a function that takes
     // a ByteBuffer and returns a parsed JSON object
     .map(parseJson)
     // Asume saveToDatabase is a function that saves
     // the object to a database and returns a
     // CompletionStage of the result of the operation
-    .forEachAsync(saveToDatabase)
+    .flatMapCompletionStage(saveToDatabase)
+    // And run by ignoring each element, since we've
+    // handled them above already.
+    .forEach(e -> {})
     .build().getSubscriber();
 ```
 
@@ -55,9 +58,10 @@ We now have a `Subscriber<ByteBuffer>` that we can wrap in a JDK9 HTTP client `B
 To elaborate on the above API a little.
 
 * `ReactiveStreams.builder()` returns a `ProcessorBuilder`. At this stage we are building a graph that has both an inlet (ie is a `Subscriber`) and an outlet (ie is a `Publisher`). If we invoked `.build()` at this stage, we would build a `Processor<ByteBuffer, ByteBuffer>`.
-* `mapConcat` has not yet been implemented for this proposal, but we can assume that it does a 1:n mapping of elements in memory. It returns a new `ProcessorBuilder`.
+* `flatMapIterable` does a 1:n mapping of elements in memory, returning the results in an `Iterable`. It returns a new `ProcessorBuilder`.
 * `map` is implemented in the current proposal, and it returns a new `ProcessorBuilder` that outputs the new type that was mapped to.
-* `forEachAsync` is not yet implemented, and could be provided in many different forms, in this case its taking a function that takes an argument and returns a `CompletionStage` of a result. An important thing to note here is that this method doesn't return a `ProcessorBuilder`, since we have now provided a sink to consume the elements, so the shape of the graph has changed to a `SubscriberBuilder`.
+* `flatMapCompletionStage` does a 1:1 mapping of elements to elements asynchronously provided by a `CompletionStage`.
+* `forEach` handles each element, and in this case we've handled them all alreday in `flatMapCompletionStage`. An important thing to note here is that this method doesn't return a `ProcessorBuilder`, since we have now provided a sink to consume the elements, so the shape of the graph has changed to a `SubscriberBuilder`.
 * The `build` method returns a `SubscriberWithResult`. Many subscribers have some form of result, for example, a `toList` subscriber will produce a result that is a list of all the elements received, or a `reduce` subscriber will produce a result that is the result of a reduction function being applied to all the elements. So, when we build a subscriber, we also want to be able to return the result that that subscriber produces. In this case, we actually aren't interested in the result - though we could be, the result would be a `CompletionStage<Void>` that is redeemed when the stream completes either normally or with an error. The `SubscriberWithResult` naming is probably not good. `Accumulator` might be a better name.
 
 So, in all, we have four different types of builders:
@@ -88,10 +92,7 @@ An engine based on Akka Streams is already implemented, as is an engine based on
 
 A TCK has been implemented - at this stage it is very incomplete, but what it does demonstrate is how the Reactive Streams TCK provided by http://www.reactive-streams.org can be utilised to validate that the Reactive Streams interfaces built by this API are conforming Reactive Streams implementations.
 
-## Next steps for implementation
+## Next steps
 
-The next steps are to implement the full scope of operations currently available in the ju.stream.Stream API. We then need to decide what if any additional operations are needed - for example, if `flatMap` maps `A -> Publisher<B>`, we may want a `mapConcat` that maps `A -> Iterable<B>`, and a `mapAsync` that maps `A -> CompletionStage<B>`. We might want to consider a split, that using a `Predicate` might return `Publisher<Publisher<T>>`. There may be some static operators, like a merge, that implements `(Publisher<A>, Publisher<A>) -> Publisher<A>)` that interleaves or does a fair merge of two `Publishers`.
+The next steps are to implement a full set of publishers and subscribers. We can then think about a zero dependency reference implementation.
 
-## Next steps for proposal
-
-I'm not sure what the next step for this proposal should be, if we should continue fleshing it out, or if we should start a JEP, for example.
