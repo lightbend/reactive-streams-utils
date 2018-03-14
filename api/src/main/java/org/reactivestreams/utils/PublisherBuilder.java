@@ -163,7 +163,7 @@ public final class PublisherBuilder<T> extends ReactiveStreamsBuilder<Publisher<
 
   /**
    * Performs an action for each element on this stream.
-   * </p>
+   * <p>
    * The returned {@link CompletionStage} will be redeemed when the stream completes, either successfully if the stream
    * completes normally, or with an error if the stream completes with an error or if the action throws an exception.
    *
