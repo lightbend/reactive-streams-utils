@@ -1,1 +1,1 @@
-packageSearchIndex = [{"l":"com.lightbend.streams"},{"l":"com.lightbend.streams.akka"},{"l":"com.lightbend.streams.examples"},{"l":"com.lightbend.streams.spi"},{"l":"com.lightbend.streams.tck"}]
+packageSearchIndex = [{"l":"com.lightbend.reactivestreams.rxjava"},{"l":"com.lightbend.reactivestreams.utils"},{"l":"org.reactivestreams.utils"},{"l":"org.reactivestreams.utils.examples"},{"l":"org.reactivestreams.utils.spi"},{"l":"org.reactivestreams.utils.tck"}]
