@@ -21,7 +21,9 @@ import org.reactivestreams.utils.spi.Graph;
 import org.reactivestreams.utils.spi.Stage;
 import org.reactivestreams.utils.spi.UnsupportedStageException;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow.*;
 import java.util.function.BiConsumer;
@@ -198,6 +200,10 @@ public class AkkaEngine implements ReactiveStreamsEngine {
       return Source.from(elements);
     } else if (stage instanceof Stage.Publisher) {
       return JavaFlowSupport.Source.fromPublisher(((Stage.Publisher) stage).getPublisher());
+    } else if (stage instanceof Stage.Concat) {
+      Graph first = ((Stage.Concat) stage).getFirst();
+      Graph second = ((Stage.Concat) stage).getSecond();
+      return buildSource(first).concat(buildSource(second));
     } else if (stage instanceof Stage.Failed) {
       return Source.failed(((Stage.Failed) stage).getError());
     } else if (stage.hasOutlet() && !stage.hasInlet()) {

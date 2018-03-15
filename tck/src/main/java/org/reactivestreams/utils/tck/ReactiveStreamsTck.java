@@ -85,7 +85,8 @@ public abstract class ReactiveStreamsTck<E extends ReactiveStreamsEngine> {
         TakeWhileStageVerification::new,
         FlatMapCompletionStageVerification::new,
         FlatMapIterableStageVerification::new,
-        ForEachStageVerification::new
+        ForEachStageVerification::new,
+        ConcatStageVerification::new
     );
 
     List<Object> allTests = new ArrayList<>();

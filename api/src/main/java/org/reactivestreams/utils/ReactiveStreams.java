@@ -13,13 +13,16 @@ package org.reactivestreams.utils;
 
 import org.reactivestreams.utils.spi.Stage;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Flow.*;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 
 /**
  * Primary entry point into the Reactive Streams utility API.
- *
+ * <p>
  * This class provides factory methods for publisher and processor builders, which can then be subsequently manipulated
  * using their respective APIs.
  */
@@ -87,7 +90,7 @@ public class ReactiveStreams {
    * @param <T> The type of the elements.
    * @return A publisher builder that emits the elements of the iterable.
    */
-  public static <T> PublisherBuilder<T> fromIterable(Iterable<? super T> ts) {
+  public static <T> PublisherBuilder<T> fromIterable(Iterable<? extends T> ts) {
     return new PublisherBuilder<>(new Stage.Of(ts), null);
   }
 
@@ -135,5 +138,76 @@ public class ReactiveStreams {
    */
   public static <T> SubscriberBuilder<T, Void> fromSubscriber(Subscriber<? extends T> subscriber) {
     return new SubscriberBuilder<>(new Stage.Subscriber(subscriber), null);
+  }
+
+  /**
+   * Creates an infinite stream produced by the iterative application of the function {@code f} to an initial element
+   * {@code seed} consisting of {@code seed}, {@code f(seed)}, {@code f(f(seed))}, etc.
+   *
+   * @param seed The initial element.
+   * @param f    A function applied to the previous element to produce the next element.
+   * @param <T>  The type of stream elements.
+   * @return A publisher builder.
+   */
+  public static <T> PublisherBuilder<T> iterate(T seed, UnaryOperator<T> f) {
+    return fromIterable(() -> Stream.iterate(seed, f).iterator());
+  }
+
+  /**
+   * Creates a stream produced by the iterative application of the function {@code next} to an initial element
+   * {@code seed}, conditioned on the predicate {@code hasNext}.
+   * <p>
+   * {@code ReactiveStreams.iterate} should produce the same sequence of elements as
+   * produced by the corresponding for-loop:
+   * <pre>{@code
+   *     for (T index=seed; hasNext.test(index); index = next.apply(index)) {
+   *         ...
+   *     }
+   * }</pre>
+   * <p>
+   * The resulting stream may be empty if the {@code hasNext} predicate does not hold true for the {@code seed} value,
+   * otherwise it will be emitted as the initial element.
+   *
+   * @param seed    The initial element.
+   * @param hasNext The predicate used to decide whether the stream should terminate before the emission of this element.
+   * @param next    The function for computing the next element from the previous element.
+   * @param <T>     The type of stream elements.
+   * @return A pubisher builder.
+   */
+  public static <T> PublisherBuilder<T> iterate(T seed, Predicate<? super T> hasNext, UnaryOperator<T> next) {
+    return fromIterable(() -> Stream.iterate(seed, hasNext, next).iterator());
+  }
+
+  /**
+   * Creates an infinite stream that emits elements supplied by the supplier {@code s}.
+   *
+   * @param s   The supplier.
+   * @param <T> The type of stream elements.
+   * @return A publisher builder.
+   */
+  public static <T> PublisherBuilder<T> generate(Supplier<? extends T> s) {
+    return fromIterable(() -> Stream.<T>generate(s).iterator());
+  }
+
+  /**
+   * Concatenates two publishers.
+   * <p>
+   * The resulting stream will be produced by subscribing to the first publisher, and emitting the elements it emits,
+   * until it emits a completion signal, at which point the second publisher will be subscribed to, and its elements
+   * will be emitted.
+   * <p>
+   * If the first publisher completes with an error signal, then the second publisher will be subscribed to but
+   * immediately cancelled, none of its elements will be emitted. This ensures that hot publishers are cleaned up.
+   * If downstream emits a cancellation signal before the first publisher finishes, it will be passed to both
+   * publishers.
+   *
+   * @param a The first publisher.
+   * @param b The second publisher.
+   * @param <T> The type of stream elements.
+   * @return A publisher builder.
+   */
+  public static <T> PublisherBuilder<T> concat(PublisherBuilder<? extends T> a,
+      PublisherBuilder<? extends T> b) {
+    return new PublisherBuilder<>(new Stage.Concat(a.toGraph(), b.toGraph()), null);
   }
 }

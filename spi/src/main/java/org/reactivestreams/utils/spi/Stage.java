@@ -11,7 +11,9 @@
 
 package org.reactivestreams.utils.spi;
 
+import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
@@ -296,7 +298,7 @@ public interface Stage {
 
   /**
    * A for each stage.
-   *
+   * <p>
    * The for each stage should execute the given action on each element encountered in the stream. Furthermore, the
    * for each stage should materialize into a {@link CompletionStage} of {@link Void}, which is redeemed when the
    * stream completes, either successfully or with an error.
@@ -320,12 +322,12 @@ public interface Stage {
 
   /**
    * A flat map stage.
-   *
+   * <p>
    * The flat map stage should execute the given mapper on each element, and concatenate the publishers emitted by
    * the mapper function into the resulting stream.
-   *
+   * <p>
    * The graph emitted by the mapper function is guaranteed to have an outlet but no inlet.
-   *
+   * <p>
    * The engine must be careful to ensure only one publisher emitted by the mapper function is running at a time.
    */
   final class FlatMap implements Inlet, Outlet {
@@ -347,10 +349,10 @@ public interface Stage {
 
   /**
    * A flat map stage that emits and flattens {@link CompletionStage}.
-   *
+   * <p>
    * The flat map stage should execute the given mapper on each element, and concatenate the values redeemed by the
    * {@link CompletionStage}'s emitted by the mapper function into the resulting stream.
-   *
+   * <p>
    * The engine must be careful to ensure only one mapper function is executed at a time, with the next mapper function
    * not executing until the {@link CompletionStage} returned by the previous mapper function has been redeemed.
    */
@@ -373,7 +375,7 @@ public interface Stage {
 
   /**
    * A flat map stage that emits and fattens {@link Iterable}.
-   *
+   * <p>
    * The flat map stage should execute the given mapper on each element, and concatenate the iterables emitted by
    * the mapper function into the resulting stream.
    */
@@ -408,6 +410,45 @@ public interface Stage {
 
     public Throwable getError() {
       return error;
+    }
+  }
+
+  /**
+   * Concatenate the given graphs together.
+   * <p>
+   * Each graph must have an outlet and no inlet.
+   * <p>
+   * The resulting publisher produced by the concat stage must emit all the elements from the first graph,
+   * and once that graph emits a completion signal, it must then subscribe to and emit all the elements from
+   * the second. If an error is emitted by the either graph, the error should be emitted from the resulting stream.
+   * <p>
+   * If processing terminates early while the first graph is still emitting, either due to that graph emitting an
+   * error, or due to a cancellation signal from downstream, then the second graph must be subscribed to and cancelled.
+   * This is to ensure that any hot publishers that may be backing the graphs are cleaned up.
+   */
+  final class Concat implements Outlet {
+    private final Graph first;
+    private final Graph second;
+
+    public Concat(Graph first, Graph second) {
+      this.first = validate(first);
+      this.second = validate(second);
+    }
+
+    private static Graph validate(Graph graph) {
+      if (graph.hasInlet() || !graph.hasOutlet()) {
+        throw new IllegalArgumentException(
+            "Concatenated graphs must have an outlet, but no inlet, but this graph does not: " + graph);
+      }
+      return graph;
+    }
+
+    public Graph getFirst() {
+      return first;
+    }
+
+    public Graph getSecond() {
+      return second;
     }
   }
 

@@ -94,5 +94,7 @@ A TCK has been implemented - at this stage it is very incomplete, but what it do
 
 ## Next steps
 
-The next steps are to implement a full set of publishers and subscribers. We can then think about a zero dependency reference implementation.
+The following work needs to be done:
 
+* Decide on a set of stages/operators/generators specifec to Reactive Streams that are needed, beyond what the JDK8 Streams API has provided. For example, asynchronous generator functions based on CompletionStage might be useful, and perhaps a stream split function, maybe a cancelled/ignore subscribers, perhaps batching operators as well.
+* Implement a zero dependency reference implementation.

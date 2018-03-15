@@ -177,6 +177,13 @@ public class RxJavaEngine implements ReactiveStreamsEngine {
       return Flowable.fromIterable(((Stage.Of) stage).getElements());
     } else if (stage instanceof Stage.Publisher) {
       return FlowInterop.fromFlowPublisher(((Stage.Publisher) stage).getPublisher());
+    } else if (stage instanceof Stage.Concat) {
+      Graph first = ((Stage.Concat) stage).getFirst();
+      Graph second = ((Stage.Concat) stage).getSecond();
+      CancelInjectingPublisher secondPublisher = new CancelInjectingPublisher(buildFlowable(second));
+      return Flowable.concat(buildFlowable(first), secondPublisher)
+          .doOnTerminate(secondPublisher::cancelIfNotSubscribed)
+          .doOnCancel(secondPublisher::cancelIfNotSubscribed);
     } else if (stage instanceof Stage.Failed) {
       return Flowable.error(((Stage.Failed) stage).getError());
     } else if (stage.hasOutlet() && !stage.hasInlet()) {

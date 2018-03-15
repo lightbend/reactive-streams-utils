@@ -170,7 +170,7 @@ public final class PublisherBuilder<T> extends ReactiveStreamsBuilder<Publisher<
    * @param action The action.
    * @return A new completion builder.
    */
-  public CompletionBuilder<CompletionStage<Void>> forEach(Consumer<? super T> action) {
+  public CompletionBuilder<Void> forEach(Consumer<? super T> action) {
     return new CompletionBuilder<>(new Stage.ForEach(action), this);
   }
 
@@ -184,7 +184,7 @@ public final class PublisherBuilder<T> extends ReactiveStreamsBuilder<Publisher<
    * @param accumulator The accumulator function.
    * @return A new completion builder.
    */
-  public CompletionBuilder<CompletionStage<T>> reduce(T identity, BinaryOperator<T> accumulator) {
+  public CompletionBuilder<T> reduce(T identity, BinaryOperator<T> accumulator) {
     return new CompletionBuilder<>(new Stage.Collect(Reductions.reduce(identity, accumulator)), this);
   }
 
@@ -197,7 +197,7 @@ public final class PublisherBuilder<T> extends ReactiveStreamsBuilder<Publisher<
    * @param accumulator The accumulator function.
    * @return A new completion builder.
    */
-  public CompletionBuilder<CompletionStage<Optional<T>>> reduce(BinaryOperator<T> accumulator) {
+  public CompletionBuilder<Optional<T>> reduce(BinaryOperator<T> accumulator) {
     return new CompletionBuilder<>(new Stage.Collect(Reductions.reduce(accumulator)), this);
   }
 
@@ -212,7 +212,7 @@ public final class PublisherBuilder<T> extends ReactiveStreamsBuilder<Publisher<
    * @param combiner    The combiner function.
    * @return A new completion builder.
    */
-  public <S> CompletionBuilder<CompletionStage<S>> reduce(S identity,
+  public <S> CompletionBuilder<S> reduce(S identity,
       BiFunction<S, ? super T, S> accumulator,
       BinaryOperator<S> combiner) {
 
