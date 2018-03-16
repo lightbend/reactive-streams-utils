@@ -58,7 +58,7 @@ public class OfStageVerification extends AbstractStageVerification {
     return List.of(new PublisherVerification());
   }
 
-  class PublisherVerification extends StagePublisherVerification<Long> {
+  public class PublisherVerification extends StagePublisherVerification<Long> {
     @Override
     public Flow.Publisher<Long> createFlowPublisher(long elements) {
       return ReactiveStreams.fromIterable(

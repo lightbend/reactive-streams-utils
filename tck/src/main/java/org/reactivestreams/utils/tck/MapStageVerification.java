@@ -51,7 +51,7 @@ public class MapStageVerification extends AbstractStageVerification {
     );
   }
 
-  class ProcessorVerification extends StageProcessorVerification<Integer> {
+  public class ProcessorVerification extends StageProcessorVerification<Integer> {
 
     @Override
     protected Flow.Processor<Integer, Integer> createIdentityFlowProcessor(int bufferSize) {

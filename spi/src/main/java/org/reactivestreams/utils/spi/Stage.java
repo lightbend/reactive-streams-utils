@@ -11,9 +11,7 @@
 
 package org.reactivestreams.utils.spi;
 
-import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
