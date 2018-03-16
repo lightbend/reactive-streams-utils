@@ -85,8 +85,9 @@ class FlatMapStage<T, R> extends GraphStage implements GraphLogic.InletListener,
 
   @Override
   public void onDownstreamFinish() {
-    // todo work out why this is sometimes throwing an exception
-    inlet.finish();
+    if (!inlet.isFinished()) {
+      inlet.finish();
+    }
     if (substream != null) {
       substream.finish();
     }

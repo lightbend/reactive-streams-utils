@@ -1,0 +1,9 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    testCompile project(":impl")
+    testCompile project(":akka")
+    testCompile project(":rxjava")
+}

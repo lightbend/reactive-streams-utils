@@ -10,6 +10,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 class GraphLogic implements Executor {
@@ -74,7 +75,14 @@ class GraphLogic implements Executor {
       Flow.Publisher previousPublisher = null;
 
       if (graph.getStages().isEmpty()) {
-        // create processor
+        SubscriberInlet inlet = new SubscriberInlet(DEFAULT_BUFFER_HIGH_WATERMARK, DEFAULT_BUFFER_LOW_WATERMARK);
+        PublisherOutlet outlet = new PublisherOutlet();
+        builderPorts.add(inlet);
+        builderPorts.add(outlet);
+        firstSubscriber = inlet;
+        lastPublisher = outlet;
+        // use an identity map stage
+        addStage(new MapStage(GraphLogic.this, inlet, outlet, Function.identity()));
       }
 
       for (Stage stage: graph.getStages()) {
@@ -86,7 +94,11 @@ class GraphLogic implements Executor {
 
         if (previousStage == null) {
           if (isSubscriber(stage)) {
-            // todo Use the stages subscriber
+            if (stage instanceof Stage.Subscriber) {
+              firstSubscriber = ((Stage.Subscriber) stage).getSubscriber();
+            } else if (stage instanceof Stage.Processor) {
+              firstSubscriber = ((Stage.Processor) stage).getProcessor();
+            }
           } else if (stage.hasInlet()) {
             SubscriberInlet inlet = new SubscriberInlet(DEFAULT_BUFFER_HIGH_WATERMARK, DEFAULT_BUFFER_LOW_WATERMARK);
             builderPorts.add(inlet);
