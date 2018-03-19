@@ -1,13 +1,13 @@
-/************************************************************************
- * Licensed under Public Domain (CC0)                                    *
- *                                                                       *
- * To the extent possible under law, the person who associated CC0 with  *
- * this code has waived all copyright and related or neighboring         *
- * rights to this code.                                                  *
- *                                                                       *
- * You should have received a copy of the CC0 legalcode along with this  *
- * work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.*
- ************************************************************************/
+/******************************************************************************
+ * Licensed under Public Domain (CC0)                                         *
+ *                                                                            *
+ * To the extent possible under law, the person who associated CC0 with       *
+ * this code has waived all copyright and related or neighboring              *
+ * rights to this code.                                                       *
+ *                                                                            *
+ * You should have received a copy of the CC0 legalcode along with this       *
+ * work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.     *
+ ******************************************************************************/
 
 package com.lightbend.reactivestreams.utils;
 
@@ -24,6 +24,7 @@ import org.reactivestreams.utils.spi.UnsupportedStageException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow.*;
 import java.util.function.BiConsumer;
@@ -88,10 +89,12 @@ public class AkkaEngine implements ReactiveStreamsEngine {
 
   @Override
   public <T, R> Processor<T, R> buildProcessor(Graph graph) throws UnsupportedStageException {
-    // Optimization - if it's just a processor, return it directly
-    Stage firstStage = graph.getStages().iterator().next();
-    if (graph.getStages().size() == 1 && firstStage instanceof Stage.Processor) {
-      return (Processor) ((Stage.Processor) firstStage).getProcessor();
+    if (!graph.getStages().isEmpty()) {
+      // Optimization - if it's just a processor, return it directly
+      Stage firstStage = graph.getStages().iterator().next();
+      if (graph.getStages().size() == 1 && firstStage instanceof Stage.Processor) {
+        return (Processor) ((Stage.Processor) firstStage).getProcessor();
+      }
     }
 
     Flow flow = Flow.create();
@@ -158,10 +161,6 @@ public class AkkaEngine implements ReactiveStreamsEngine {
   private Sink toSink(Stage stage) {
     if (stage == Stage.FindFirst.INSTANCE) {
       return Sink.headOption();
-    } else if (stage instanceof Stage.ForEach) {
-      Consumer action = ((Stage.ForEach) stage).getAction();
-      return Sink.foreach(action::accept)
-          .mapMaterializedValue(done -> done.thenApply(d -> null));
     } else if (stage instanceof Stage.Collect) {
       Collector collector = ((Stage.Collect) stage).getCollector();
       BiConsumer accumulator = collector.accumulator();
@@ -176,8 +175,10 @@ public class AkkaEngine implements ReactiveStreamsEngine {
       }
     } else if (stage instanceof Stage.Subscriber) {
       return Flow.create()
-          .watchTermination((left, done) -> done.thenApply(d -> null))
+          .viaMat(new TerminationWatcher(), Keep.right())
           .to((Sink) JavaFlowSupport.Sink.fromSubscriber(((Stage.Subscriber) stage).getSubscriber()));
+    } else if (stage == Stage.Cancel.INSTANCE) {
+      return Sink.cancelled().mapMaterializedValue(n -> CompletableFuture.completedFuture(null));
     } else if (stage.hasInlet() && !stage.hasOutlet()) {
       throw new UnsupportedStageException(stage);
     } else {

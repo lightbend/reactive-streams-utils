@@ -1,19 +1,32 @@
+/******************************************************************************
+ * Licensed under Public Domain (CC0)                                         *
+ *                                                                            *
+ * To the extent possible under law, the person who associated CC0 with       *
+ * this code has waived all copyright and related or neighboring              *
+ * rights to this code.                                                       *
+ *                                                                            *
+ * You should have received a copy of the CC0 legalcode along with this       *
+ * work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.     *
+ ******************************************************************************/
+
 package org.reactivestreams.utils.impl;
 
 import java.util.Iterator;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
-class FlatMapIterableStage<T, R> extends GraphStage implements GraphLogic.InletListener, GraphLogic.OutletListener {
-  private final GraphLogic.StageInlet<T> inlet;
-  private final GraphLogic.StageOutlet<R> outlet;
+/**
+ * A flatmap to iterable stage.
+ */
+class FlatMapIterableStage<T, R> extends GraphStage implements InletListener, OutletListener {
+  private final StageInlet<T> inlet;
+  private final StageOutlet<R> outlet;
   private final Function<T, Iterable<R>> mapper;
 
   private Throwable error;
   private Iterator<R> iterator;
 
-  FlatMapIterableStage(GraphLogic graphLogic, GraphLogic.StageInlet<T> inlet, GraphLogic.StageOutlet<R> outlet, Function<T, Iterable<R>> mapper) {
-    super(graphLogic);
+  FlatMapIterableStage(BuiltGraph builtGraph, StageInlet<T> inlet, StageOutlet<R> outlet, Function<T, Iterable<R>> mapper) {
+    super(builtGraph);
     this.inlet = inlet;
     this.outlet = outlet;
     this.mapper = mapper;
@@ -42,7 +55,7 @@ class FlatMapIterableStage<T, R> extends GraphStage implements GraphLogic.InletL
   @Override
   public void onUpstreamFinish() {
     if (iterator == null) {
-      outlet.finish();
+      outlet.complete();
     }
   }
 
@@ -64,11 +77,11 @@ class FlatMapIterableStage<T, R> extends GraphStage implements GraphLogic.InletL
       outlet.push(iterator.next());
       if (!iterator.hasNext() && this.iterator == iterator) {
         this.iterator = null;
-        if (inlet.isFinished()) {
+        if (inlet.isClosed()) {
           if (error != null) {
             outlet.fail(error);
           } else {
-            outlet.finish();
+            outlet.complete();
           }
         }
       }
@@ -77,6 +90,6 @@ class FlatMapIterableStage<T, R> extends GraphStage implements GraphLogic.InletL
 
   @Override
   public void onDownstreamFinish() {
-    inlet.finish();
+    inlet.cancel();
   }
 }

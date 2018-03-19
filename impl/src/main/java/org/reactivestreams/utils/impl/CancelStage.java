@@ -11,43 +11,41 @@
 
 package org.reactivestreams.utils.impl;
 
-import java.util.concurrent.Flow;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 /**
- * Processor that wraps a subscriber and publisher.
+ * A cancel stage.
  */
-public class WrappedProcessor<T, R> implements Flow.Processor<T, R> {
-  private final Flow.Subscriber<T> subscriber;
-  private final Flow.Publisher<R> publisher;
+class CancelStage extends GraphStage implements InletListener {
+  private final StageInlet<?> inlet;
+  private final CompletableFuture<Void> result;
 
-  public WrappedProcessor(Flow.Subscriber<T> subscriber, Flow.Publisher<R> publisher) {
-    this.subscriber = subscriber;
-    this.publisher = publisher;
+  CancelStage(BuiltGraph builtGraph, StageInlet<?> inlet, CompletableFuture<Void> result) {
+    super(builtGraph);
+    this.inlet = inlet;
+    this.result = result;
+
+    inlet.setListener(this);
   }
 
   @Override
-  public void subscribe(Flow.Subscriber<? super R> subscriber) {
-    publisher.subscribe(subscriber);
+  protected void postStart() {
+    if (!inlet.isClosed()) {
+      inlet.cancel();
+    }
+    result.complete(null);
   }
 
   @Override
-  public void onSubscribe(Flow.Subscription subscription) {
-    subscriber.onSubscribe(subscription);
+  public void onPush() {
   }
 
   @Override
-  public void onNext(T item) {
-    subscriber.onNext(item);
+  public void onUpstreamFinish() {
   }
 
   @Override
-  public void onError(Throwable throwable) {
-    subscriber.onError(throwable);
-  }
-
-  @Override
-  public void onComplete() {
-    subscriber.onComplete();
+  public void onUpstreamFailure(Throwable error) {
   }
 }
-

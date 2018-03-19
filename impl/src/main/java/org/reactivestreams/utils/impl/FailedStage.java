@@ -1,11 +1,25 @@
+/******************************************************************************
+ * Licensed under Public Domain (CC0)                                         *
+ *                                                                            *
+ * To the extent possible under law, the person who associated CC0 with       *
+ * this code has waived all copyright and related or neighboring              *
+ * rights to this code.                                                       *
+ *                                                                            *
+ * You should have received a copy of the CC0 legalcode along with this       *
+ * work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.     *
+ ******************************************************************************/
+
 package org.reactivestreams.utils.impl;
 
-class FailedStage extends GraphStage implements GraphLogic.OutletListener {
+/**
+ * A failed stage. Does nothing but fails the stream when the graph starts.
+ */
+class FailedStage extends GraphStage implements OutletListener {
   private final Throwable error;
-  private final GraphLogic.StageOutlet<?> outlet;
+  private final StageOutlet<?> outlet;
 
-  public FailedStage(GraphLogic graphLogic, GraphLogic.StageOutlet<?> outlet, Throwable error) {
-    super(graphLogic);
+  public FailedStage(BuiltGraph builtGraph, StageOutlet<?> outlet, Throwable error) {
+    super(builtGraph);
     this.outlet = outlet;
     this.error = error;
 
@@ -14,7 +28,7 @@ class FailedStage extends GraphStage implements GraphLogic.OutletListener {
 
   @Override
   protected void postStart() {
-    if (!outlet.isFinished()) {
+    if (!outlet.isClosed()) {
       outlet.fail(error);
     }
   }

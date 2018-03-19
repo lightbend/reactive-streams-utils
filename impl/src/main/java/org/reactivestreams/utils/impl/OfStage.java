@@ -1,13 +1,27 @@
+/******************************************************************************
+ * Licensed under Public Domain (CC0)                                         *
+ *                                                                            *
+ * To the extent possible under law, the person who associated CC0 with       *
+ * this code has waived all copyright and related or neighboring              *
+ * rights to this code.                                                       *
+ *                                                                            *
+ * You should have received a copy of the CC0 legalcode along with this       *
+ * work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.     *
+ ******************************************************************************/
+
 package org.reactivestreams.utils.impl;
 
 import java.util.Iterator;
 
-class OfStage<T> extends GraphStage implements GraphLogic.OutletListener {
-  private final GraphLogic.StageOutlet<T> outlet;
+/**
+ * Of stage.
+ */
+class OfStage<T> extends GraphStage implements OutletListener {
+  private final StageOutlet<T> outlet;
   private Iterator<T> elements;
 
-  public OfStage(GraphLogic graphLogic, GraphLogic.StageOutlet<T> outlet, Iterable<T> elements) {
-    super(graphLogic);
+  public OfStage(BuiltGraph builtGraph, StageOutlet<T> outlet, Iterable<T> elements) {
+    super(builtGraph);
     this.outlet = outlet;
     this.elements = elements.iterator();
 
@@ -16,9 +30,9 @@ class OfStage<T> extends GraphStage implements GraphLogic.OutletListener {
 
   @Override
   protected void postStart() {
-    if (!outlet.isFinished()) {
+    if (!outlet.isClosed()) {
       if (!elements.hasNext()) {
-        outlet.finish();
+        outlet.complete();
       }
     }
   }
@@ -26,8 +40,8 @@ class OfStage<T> extends GraphStage implements GraphLogic.OutletListener {
   @Override
   public void onPull() {
     outlet.push(elements.next());
-    if (!elements.hasNext() && !outlet.isFinished()) {
-      outlet.finish();
+    if (!elements.hasNext() && !outlet.isClosed()) {
+      outlet.complete();
     }
   }
 

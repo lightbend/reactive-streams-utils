@@ -1,19 +1,30 @@
+/******************************************************************************
+ * Licensed under Public Domain (CC0)                                         *
+ *                                                                            *
+ * To the extent possible under law, the person who associated CC0 with       *
+ * this code has waived all copyright and related or neighboring              *
+ * rights to this code.                                                       *
+ *                                                                            *
+ * You should have received a copy of the CC0 legalcode along with this       *
+ * work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.     *
+ ******************************************************************************/
+
 package org.reactivestreams.utils.impl;
 
 import org.reactivestreams.utils.spi.Graph;
 
 import java.util.function.Function;
 
-class FlatMapStage<T, R> extends GraphStage implements GraphLogic.InletListener, GraphLogic.OutletListener {
-  private final GraphLogic.StageInlet<T> inlet;
-  private final GraphLogic.StageOutlet<R> outlet;
+class FlatMapStage<T, R> extends GraphStage implements InletListener, OutletListener {
+  private final StageInlet<T> inlet;
+  private final StageOutlet<R> outlet;
   private final Function<T, Graph> mapper;
 
-  private GraphLogic.SubStageInlet<R> substream;
+  private BuiltGraph.SubStageInlet<R> substream;
   private Throwable error;
 
-  FlatMapStage(GraphLogic graphLogic, GraphLogic.StageInlet<T> inlet, GraphLogic.StageOutlet<R> outlet, Function<T, Graph> mapper) {
-    super(graphLogic);
+  FlatMapStage(BuiltGraph builtGraph, StageInlet<T> inlet, StageOutlet<R> outlet, Function<T, Graph> mapper) {
+    super(builtGraph);
     this.inlet = inlet;
     this.outlet = outlet;
     this.mapper = mapper;
@@ -26,7 +37,7 @@ class FlatMapStage<T, R> extends GraphStage implements GraphLogic.InletListener,
   public void onPush() {
     Graph graph = mapper.apply(inlet.grab());
     substream = createSubInlet(graph);
-    substream.setListener(new GraphLogic.InletListener() {
+    substream.setListener(new InletListener() {
       @Override
       public void onPush() {
         outlet.push(substream.grab());
@@ -35,11 +46,11 @@ class FlatMapStage<T, R> extends GraphStage implements GraphLogic.InletListener,
       @Override
       public void onUpstreamFinish() {
         substream = null;
-        if (inlet.isFinished()) {
+        if (inlet.isClosed()) {
           if (error != null) {
             outlet.fail(error);
           } else {
-            outlet.finish();
+            outlet.complete();
           }
         } else if (outlet.isAvailable()) {
           inlet.pull();
@@ -49,8 +60,8 @@ class FlatMapStage<T, R> extends GraphStage implements GraphLogic.InletListener,
       @Override
       public void onUpstreamFailure(Throwable error) {
         outlet.fail(error);
-        if (!inlet.isFinished()) {
-          inlet.finish();
+        if (!inlet.isClosed()) {
+          inlet.cancel();
         }
       }
     });
@@ -61,7 +72,7 @@ class FlatMapStage<T, R> extends GraphStage implements GraphLogic.InletListener,
   @Override
   public void onUpstreamFinish() {
     if (substream == null) {
-      outlet.finish();
+      outlet.complete();
     }
   }
 
@@ -85,11 +96,11 @@ class FlatMapStage<T, R> extends GraphStage implements GraphLogic.InletListener,
 
   @Override
   public void onDownstreamFinish() {
-    if (!inlet.isFinished()) {
-      inlet.finish();
+    if (!inlet.isClosed()) {
+      inlet.cancel();
     }
     if (substream != null) {
-      substream.finish();
+      substream.cancel();
     }
   }
 }

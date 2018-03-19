@@ -1,23 +1,45 @@
+/******************************************************************************
+ * Licensed under Public Domain (CC0)                                         *
+ *                                                                            *
+ * To the extent possible under law, the person who associated CC0 with       *
+ * this code has waived all copyright and related or neighboring              *
+ * rights to this code.                                                       *
+ *                                                                            *
+ * You should have received a copy of the CC0 legalcode along with this       *
+ * work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.     *
+ ******************************************************************************/
+
 package org.reactivestreams.utils.impl;
 
 import org.reactivestreams.utils.spi.Graph;
 
 import java.util.concurrent.Executor;
 
+/**
+ * Superclass of all graph stages.
+ */
 abstract class GraphStage {
 
-  private final GraphLogic graphLogic;
+  private final BuiltGraph builtGraph;
 
-  GraphStage(GraphLogic graphLogic) {
-    this.graphLogic = graphLogic;
+  GraphStage(BuiltGraph builtGraph) {
+    this.builtGraph = builtGraph;
   }
 
-  protected <T> GraphLogic.SubStageInlet<T> createSubInlet(Graph graph) {
-    return graphLogic.buildInlet(graph);
+  /**
+   * Create a sub inlet for the given graph.
+   * <p>
+   * After being created, the inlet should have an inlet listener attached to it, and then it should be started.
+   *
+   * @param graph The graph.
+   * @return The inlet.
+   */
+  protected <T> BuiltGraph.SubStageInlet<T> createSubInlet(Graph graph) {
+    return builtGraph.buildSubInlet(graph);
   }
 
   protected Executor executor() {
-    return graphLogic;
+    return builtGraph;
   }
 
   /**

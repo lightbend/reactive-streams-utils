@@ -1,15 +1,26 @@
+/******************************************************************************
+ * Licensed under Public Domain (CC0)                                         *
+ *                                                                            *
+ * To the extent possible under law, the person who associated CC0 with       *
+ * this code has waived all copyright and related or neighboring              *
+ * rights to this code.                                                       *
+ *                                                                            *
+ * You should have received a copy of the CC0 legalcode along with this       *
+ * work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.     *
+ ******************************************************************************/
+
 package org.reactivestreams.utils.impl;
 
-public class ConcatStage<T> extends GraphStage implements GraphLogic.OutletListener {
+public class ConcatStage<T> extends GraphStage implements OutletListener {
 
-  private final GraphLogic.StageInlet<T> first;
-  private final GraphLogic.StageInlet<T> second;
-  private final GraphLogic.StageOutlet<T> outlet;
+  private final StageInlet<T> first;
+  private final StageInlet<T> second;
+  private final StageOutlet<T> outlet;
 
   private Throwable secondError;
 
-  public ConcatStage(GraphLogic graphLogic, GraphLogic.StageInlet<T> first, GraphLogic.StageInlet<T> second, GraphLogic.StageOutlet<T> outlet) {
-    super(graphLogic);
+  public ConcatStage(BuiltGraph builtGraph, StageInlet<T> first, StageInlet<T> second, StageOutlet<T> outlet) {
+    super(builtGraph);
     this.first = first;
     this.second = second;
     this.outlet = outlet;
@@ -21,7 +32,7 @@ public class ConcatStage<T> extends GraphStage implements GraphLogic.OutletListe
 
   @Override
   public void onPull() {
-    if (first.isFinished()) {
+    if (first.isClosed()) {
       second.pull();
     } else {
       first.pull();
@@ -30,15 +41,15 @@ public class ConcatStage<T> extends GraphStage implements GraphLogic.OutletListe
 
   @Override
   public void onDownstreamFinish() {
-    if (!first.isFinished()) {
-      first.finish();
+    if (!first.isClosed()) {
+      first.cancel();
     }
-    if (!second.isFinished()) {
-      second.finish();
+    if (!second.isClosed()) {
+      second.cancel();
     }
   }
 
-  private class FirstInletListener implements GraphLogic.InletListener {
+  private class FirstInletListener implements InletListener {
     @Override
     public void onPush() {
       outlet.push(first.grab());
@@ -46,11 +57,11 @@ public class ConcatStage<T> extends GraphStage implements GraphLogic.OutletListe
 
     @Override
     public void onUpstreamFinish() {
-      if (second.isFinished()) {
+      if (second.isClosed()) {
         if (secondError != null) {
           outlet.fail(secondError);
         } else {
-          outlet.finish();
+          outlet.complete();
         }
       } else if (outlet.isAvailable()) {
         second.pull();
@@ -60,13 +71,13 @@ public class ConcatStage<T> extends GraphStage implements GraphLogic.OutletListe
     @Override
     public void onUpstreamFailure(Throwable error) {
       outlet.fail(error);
-      if (!second.isFinished()) {
-        second.finish();
+      if (!second.isClosed()) {
+        second.cancel();
       }
     }
   }
 
-  private class SecondInletListener implements GraphLogic.InletListener {
+  private class SecondInletListener implements InletListener {
     @Override
     public void onPush() {
       outlet.push(second.grab());
@@ -74,14 +85,14 @@ public class ConcatStage<T> extends GraphStage implements GraphLogic.OutletListe
 
     @Override
     public void onUpstreamFinish() {
-      if (first.isFinished()) {
-        outlet.finish();
+      if (first.isClosed()) {
+        outlet.complete();
       }
     }
 
     @Override
     public void onUpstreamFailure(Throwable error) {
-      if (first.isFinished()) {
+      if (first.isClosed()) {
         outlet.fail(error);
       } else {
         secondError = error;

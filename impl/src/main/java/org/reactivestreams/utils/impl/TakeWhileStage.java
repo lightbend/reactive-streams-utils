@@ -1,15 +1,29 @@
+/******************************************************************************
+ * Licensed under Public Domain (CC0)                                         *
+ *                                                                            *
+ * To the extent possible under law, the person who associated CC0 with       *
+ * this code has waived all copyright and related or neighboring              *
+ * rights to this code.                                                       *
+ *                                                                            *
+ * You should have received a copy of the CC0 legalcode along with this       *
+ * work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.     *
+ ******************************************************************************/
+
 package org.reactivestreams.utils.impl;
 
 import java.util.function.Predicate;
 
-class TakeWhileStage<T> extends GraphStage implements GraphLogic.InletListener, GraphLogic.OutletListener {
-  private final GraphLogic.StageInlet<T> inlet;
-  private final GraphLogic.StageOutlet<T> outlet;
+/**
+ * Take while stage.
+ */
+class TakeWhileStage<T> extends GraphStage implements InletListener, OutletListener {
+  private final StageInlet<T> inlet;
+  private final StageOutlet<T> outlet;
   private final Predicate<T> predicate;
   private final boolean inclusive;
 
-  TakeWhileStage(GraphLogic graphLogic, GraphLogic.StageInlet<T> inlet, GraphLogic.StageOutlet<T> outlet, Predicate<T> predicate, boolean inclusive) {
-    super(graphLogic);
+  TakeWhileStage(BuiltGraph builtGraph, StageInlet<T> inlet, StageOutlet<T> outlet, Predicate<T> predicate, boolean inclusive) {
+    super(builtGraph);
     this.inlet = inlet;
     this.outlet = outlet;
     this.predicate = predicate;
@@ -28,14 +42,14 @@ class TakeWhileStage<T> extends GraphStage implements GraphLogic.InletListener, 
       if (inclusive) {
         outlet.push(element);
       }
-      outlet.finish();
-      inlet.finish();
+      outlet.complete();
+      inlet.cancel();
     }
   }
 
   @Override
   public void onUpstreamFinish() {
-    outlet.finish();
+    outlet.complete();
   }
 
   @Override
@@ -50,6 +64,6 @@ class TakeWhileStage<T> extends GraphStage implements GraphLogic.InletListener, 
 
   @Override
   public void onDownstreamFinish() {
-    inlet.finish();
+    inlet.cancel();
   }
 }

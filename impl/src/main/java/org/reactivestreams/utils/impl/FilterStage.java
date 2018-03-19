@@ -1,14 +1,28 @@
+/******************************************************************************
+ * Licensed under Public Domain (CC0)                                         *
+ *                                                                            *
+ * To the extent possible under law, the person who associated CC0 with       *
+ * this code has waived all copyright and related or neighboring              *
+ * rights to this code.                                                       *
+ *                                                                            *
+ * You should have received a copy of the CC0 legalcode along with this       *
+ * work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.     *
+ ******************************************************************************/
+
 package org.reactivestreams.utils.impl;
 
 import java.util.function.Predicate;
 
-class FilterStage<T> extends GraphStage implements GraphLogic.InletListener, GraphLogic.OutletListener {
-  private final GraphLogic.StageInlet<T> inlet;
-  private final GraphLogic.StageOutlet<T> outlet;
+/**
+ * A filter stage.
+ */
+class FilterStage<T> extends GraphStage implements InletListener, OutletListener {
+  private final StageInlet<T> inlet;
+  private final StageOutlet<T> outlet;
   private final Predicate<T> predicate;
 
-  FilterStage(GraphLogic graphLogic, GraphLogic.StageInlet<T> inlet, GraphLogic.StageOutlet<T> outlet, Predicate<T> predicate) {
-    super(graphLogic);
+  FilterStage(BuiltGraph builtGraph, StageInlet<T> inlet, StageOutlet<T> outlet, Predicate<T> predicate) {
+    super(builtGraph);
     this.inlet = inlet;
     this.outlet = outlet;
     this.predicate = predicate;
@@ -29,7 +43,7 @@ class FilterStage<T> extends GraphStage implements GraphLogic.InletListener, Gra
 
   @Override
   public void onUpstreamFinish() {
-    outlet.finish();
+    outlet.complete();
   }
 
   @Override
@@ -44,6 +58,6 @@ class FilterStage<T> extends GraphStage implements GraphLogic.InletListener, Gra
 
   @Override
   public void onDownstreamFinish() {
-    inlet.finish();
+    inlet.cancel();
   }
 }

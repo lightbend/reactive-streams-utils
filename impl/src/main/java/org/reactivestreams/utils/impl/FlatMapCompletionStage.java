@@ -1,19 +1,31 @@
-package org.reactivestreams.utils.impl;
+/******************************************************************************
+ * Licensed under Public Domain (CC0)                                         *
+ *                                                                            *
+ * To the extent possible under law, the person who associated CC0 with       *
+ * this code has waived all copyright and related or neighboring              *
+ * rights to this code.                                                       *
+ *                                                                            *
+ * You should have received a copy of the CC0 legalcode along with this       *
+ * work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.     *
+ ******************************************************************************/
 
-import org.reactivestreams.utils.spi.Graph;
+package org.reactivestreams.utils.impl;
 
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
-class FlatMapCompletionStage<T, R> extends GraphStage implements GraphLogic.InletListener, GraphLogic.OutletListener {
-  private final GraphLogic.StageInlet<T> inlet;
-  private final GraphLogic.StageOutlet<R> outlet;
+/**
+ * Flat maps to completion stages of elements.
+ */
+class FlatMapCompletionStage<T, R> extends GraphStage implements InletListener, OutletListener {
+  private final StageInlet<T> inlet;
+  private final StageOutlet<R> outlet;
   private final Function<T, CompletionStage<R>> mapper;
 
   private Throwable error;
 
-  FlatMapCompletionStage(GraphLogic graphLogic, GraphLogic.StageInlet<T> inlet, GraphLogic.StageOutlet<R> outlet, Function<T, CompletionStage<R>> mapper) {
-    super(graphLogic);
+  FlatMapCompletionStage(BuiltGraph builtGraph, StageInlet<T> inlet, StageOutlet<R> outlet, Function<T, CompletionStage<R>> mapper) {
+    super(builtGraph);
     this.inlet = inlet;
     this.outlet = outlet;
     this.mapper = mapper;
@@ -26,21 +38,21 @@ class FlatMapCompletionStage<T, R> extends GraphStage implements GraphLogic.Inle
   public void onPush() {
     CompletionStage<R> future = mapper.apply(inlet.grab());
     future.whenCompleteAsync((result, error) -> {
-      if (!outlet.isFinished()) {
+      if (!outlet.isClosed()) {
         if (error == null) {
           outlet.push(result);
-          if (inlet.isFinished()) {
+          if (inlet.isClosed()) {
             if (this.error != null) {
               outlet.fail(this.error);
             } else {
-              outlet.finish();
+              outlet.complete();
             }
           }
         } else {
 
           outlet.fail(error);
-          if (!inlet.isFinished()) {
-            inlet.finish();
+          if (!inlet.isClosed()) {
+            inlet.cancel();
           }
         }
       }
@@ -50,7 +62,7 @@ class FlatMapCompletionStage<T, R> extends GraphStage implements GraphLogic.Inle
   @Override
   public void onUpstreamFinish() {
     if (!activeCompletionStage()) {
-      outlet.finish();
+      outlet.complete();
     }
   }
 
@@ -74,6 +86,6 @@ class FlatMapCompletionStage<T, R> extends GraphStage implements GraphLogic.Inle
 
   @Override
   public void onDownstreamFinish() {
-    inlet.finish();
+    inlet.cancel();
   }
 }
