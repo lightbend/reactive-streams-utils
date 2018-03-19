@@ -14,6 +14,8 @@ package com.lightbend.reactivestreams.utils;
 import akka.actor.ActorSystem;
 import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
+import akka.stream.javadsl.Sink;
+import akka.stream.javadsl.Source;
 import org.reactivestreams.utils.ReactiveStreamsEngine;
 import org.reactivestreams.utils.tck.CancelStageVerification;
 import org.reactivestreams.utils.tck.FlatMapStageVerification;
@@ -42,6 +44,9 @@ public class AkkaReactiveStreamsTck extends ReactiveStreamsTck<AkkaEngine> {
 
   @Override
   protected AkkaEngine createEngine() {
+    Source.<String>empty().splitWhen(t -> true)
+        .prefixAndTail()
+
     system = ActorSystem.create();
     materializer = ActorMaterializer.create(system);
     return new AkkaEngine(materializer);

@@ -12,6 +12,7 @@
 package org.reactivestreams.utils.impl;
 
 import org.reactivestreams.tck.TestEnvironment;
+import org.reactivestreams.utils.tck.CollectProcessorStageVerification;
 import org.reactivestreams.utils.tck.ReactiveStreamsTck;
 
 public class ReactiveStreamsEngineImplTck extends ReactiveStreamsTck<ReactiveStreamsEngineImpl> {
@@ -24,5 +25,4 @@ public class ReactiveStreamsEngineImplTck extends ReactiveStreamsTck<ReactiveStr
   protected ReactiveStreamsEngineImpl createEngine() {
     return new ReactiveStreamsEngineImpl();
   }
-
 }

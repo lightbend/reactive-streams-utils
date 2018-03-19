@@ -171,81 +171,39 @@ public final class PublisherBuilder<T> extends ReactiveStreamsBuilder<Publisher<
    * @return A new completion builder.
    */
   public CompletionBuilder<Void> forEach(Consumer<? super T> action) {
-    return collect(Collector.<T, Void, Void>of(
-        () -> null,
-        (n, t) -> action.accept(t),
-        (v1, v2) -> null,
-        v -> null
-    ));
-  }
-
-  /**
-   * Ignores each element of this stream.
-   * <p>
-   * The returned {@link CompletionStage} will be redeemed when the stream completes, either successfully if the
-   * stream completes normally, or with an error if the stream completes with an error or if the action throws an
-   * exception.
-   *
-   * @return A new completion builder.
-   */
-  public CompletionBuilder<Void> ignore() {
-    return forEach(r -> {});
-  }
-
-  /**
-   * Cancels the stream as soon as it starts.
-   * <p>
-   * The returned {@link CompletionStage} will be immediately redeemed as soon as the stream starts.
-   *
-   * @return A new completion builder.
-   */
-  public CompletionBuilder<Void> cancel() {
-    return new CompletionBuilder<>(Stage.Cancel.INSTANCE, this);
+    return to(ReactiveStreams.forEach(action));
   }
 
   /**
    * Perform a reduction on the elements of this stream, using the provided identity value and the accumulation
    * function.
    * <p>
-   * The result of the reduction is returned in the {@link CompletionStage}.
+   * The result of the reduction is emitted from the returned publisher.
    *
    * @param identity    The identity value.
    * @param accumulator The accumulator function.
-   * @return A new completion builder.
+   * @return A new publisher builder.
    */
-  public CompletionBuilder<T> reduce(T identity, BinaryOperator<T> accumulator) {
-    return new CompletionBuilder<>(new Stage.Collect(Reductions.reduce(identity, accumulator)), this);
-  }
-
-  /**
-   * Perform a reduction on the elements of this stream, using provided the accumulation function.
-   * <p>
-   * The result of the reduction is returned in the {@link CompletionStage}. If there are no elements in this stream,
-   * empty will be returned.
-   *
-   * @param accumulator The accumulator function.
-   * @return A new completion builder.
-   */
-  public CompletionBuilder<Optional<T>> reduce(BinaryOperator<T> accumulator) {
-    return new CompletionBuilder<>(new Stage.Collect(Reductions.reduce(accumulator)), this);
+  public PublisherBuilder<T> reduce(T identity, BinaryOperator<T> accumulator) {
+    return collect(Reductions.reduce(identity, accumulator));
   }
 
   /**
    * Perform a reduction on the elements of this stream, using the provided identity value, accumulation function and
    * combiner function.
    * <p>
-   * The result of the reduction is returned in the {@link CompletionStage}.
+   * The result of the reduction is emitted from the returned publisher.
    *
    * @param identity    The identity value.
    * @param accumulator The accumulator function.
    * @param combiner    The combiner function.
-   * @return A new completion builder.
+   * @return A new publisher builder.
    */
-  public <S> CompletionBuilder<S> reduce(S identity,
+  public <S> PublisherBuilder<S> reduce(S identity,
       BiFunction<S, ? super T, S> accumulator,
       BinaryOperator<S> combiner) {
 
-    return new CompletionBuilder<>(new Stage.Collect(Reductions.reduce(identity, accumulator, combiner)), this);
+    return collect(Reductions.reduce(identity, accumulator, combiner));
   }
 
   /**
@@ -257,7 +215,7 @@ public final class PublisherBuilder<T> extends ReactiveStreamsBuilder<Publisher<
    * @return A {@link CompletionBuilder} that emits the element when found.
    */
   public CompletionBuilder<Optional<T>> findFirst() {
-    return new CompletionBuilder<>(Stage.FindFirst.INSTANCE, this);
+    return to(ReactiveStreams.findFirst());
   }
 
   /**
@@ -265,14 +223,16 @@ public final class PublisherBuilder<T> extends ReactiveStreamsBuilder<Publisher<
    * <p>
    * Since Reactive Streams are intrinsically sequential, only the accumulator of the collector will be used, the
    * combiner will not be used.
+   * <p>
+   * The accumulated result is emitted from the returned publisher.
    *
    * @param collector The collector to collect the elements.
    * @param <R>       The result of the collector.
    * @param <A>       The accumulator type.
-   * @return A {@link CompletionBuilder} that emits the collected result.
+   * @return A new publisher builder.
    */
-  public <R, A> CompletionBuilder<R> collect(Collector<? super T, A, R> collector) {
-    return new CompletionBuilder<>(new Stage.Collect(collector), this);
+  public <R, A> PublisherBuilder<R> collect(Collector<? super T, A, R> collector) {
+    return new PublisherBuilder<>(new Stage.CollectProcessor(collector), this);
   }
 
   /**
@@ -281,7 +241,7 @@ public final class PublisherBuilder<T> extends ReactiveStreamsBuilder<Publisher<
    * @return A {@link CompletionBuilder} that emits the list.
    */
   public CompletionBuilder<List<T>> toList() {
-    return collect(Collectors.toList());
+    return to(ReactiveStreams.toList());
   }
 
   /**

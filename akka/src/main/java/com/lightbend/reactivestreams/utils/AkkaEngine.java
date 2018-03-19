@@ -21,14 +21,11 @@ import org.reactivestreams.utils.spi.Graph;
 import org.reactivestreams.utils.spi.Stage;
 import org.reactivestreams.utils.spi.UnsupportedStageException;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow.*;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collector;
@@ -141,6 +138,18 @@ public class AkkaEngine implements ReactiveStreamsEngine {
     } else if (stage instanceof Stage.FlatMapIterable) {
       Function<Object, Iterable<Object>> mapper = (Function) ((Stage.FlatMapIterable) stage).getMapper();
       return flow.mapConcat(mapper::apply);
+    } else if (stage instanceof Stage.CollectProcessor) {
+      Collector collector = ((Stage.CollectProcessor) stage).getCollector();
+      BiConsumer accumulator = collector.accumulator();
+      Flow resultFlow = flow.fold(collector.supplier().get(), (resultContainer, in) -> {
+        accumulator.accept(resultContainer, in);
+        return resultContainer;
+      });
+      if (collector.characteristics().contains(Collector.Characteristics.IDENTITY_FINISH)) {
+        return resultFlow;
+      } else {
+        return resultFlow.map(t -> collector.finisher().apply(t));
+      }
     } else if (stage instanceof Stage.Processor) {
       Processor<Object, Object> processor = (Processor) (((Stage.Processor) stage).getProcessor());
       Flow processorFlow;
@@ -161,8 +170,8 @@ public class AkkaEngine implements ReactiveStreamsEngine {
   private Sink toSink(Stage stage) {
     if (stage == Stage.FindFirst.INSTANCE) {
       return Sink.headOption();
-    } else if (stage instanceof Stage.Collect) {
-      Collector collector = ((Stage.Collect) stage).getCollector();
+    } else if (stage instanceof Stage.CollectSubscriber) {
+      Collector collector = ((Stage.CollectSubscriber) stage).getCollector();
       BiConsumer accumulator = collector.accumulator();
       Sink<Object, CompletionStage<Object>> sink = Sink.fold(collector.supplier().get(), (resultContainer, in) -> {
         accumulator.accept(resultContainer, in);

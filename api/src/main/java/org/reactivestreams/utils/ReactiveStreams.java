@@ -14,10 +14,12 @@ package org.reactivestreams.utils;
 import org.reactivestreams.utils.spi.Stage;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow.*;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
+import java.util.function.*;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -210,4 +212,136 @@ public class ReactiveStreams {
       PublisherBuilder<? extends T> b) {
     return new PublisherBuilder<>(new Stage.Concat(a.toGraph(), b.toGraph()), null);
   }
+
+  /**
+   * Creates a subscriber that performs an action for each element on this stream.
+   * <p>
+   * The returned {@link CompletionStage} from the {@link SubscriberWithResult} will be redeemed when the stream
+   * completes, either successfully if the stream completes normally, or with an error if the stream completes with an
+   * error or if the action throws an exception.
+   *
+   * @param action The action.
+   * @return A new subscriber builder.
+   */
+  public static <T> SubscriberBuilder<T, Void> forEach(Consumer<? super T> action) {
+    return collect(Collector.<T, Void, Void>of(
+            () -> null,
+            (v, t) -> action.accept(t),
+            (v1, v2) -> null,
+            v -> null
+        ));
+  }
+
+
+  /**
+   * Creates a subscriber that ignores each element of the stream.
+   * <p>
+   * The returned {@link CompletionStage} from the {@link SubscriberWithResult} will be redeemed when the stream
+   * completes, either successfully if the stream completes normally, or with an error if the stream completes with an
+   * error or if the action throws an exception.
+   *
+   * @return A new subscriber builder.
+   */
+  public static <T> SubscriberBuilder<T, Void> ignore() {
+    return forEach(t -> {});
+  }
+
+  /**
+   * Creates a subscriber which performs a reduction on the elements of this stream, using the provided identity value
+   * and the accumulation function.
+   *
+   * The result of the reduction is returned in the {@link SubscriberWithResult}.
+   *
+   * @param identity The identity value.
+   * @param accumulator The accumulator function.
+   * @return A new subscriber builder.
+   */
+  public static <T> SubscriberBuilder<T, T> reduce(T identity, BinaryOperator<T> accumulator) {
+    return collect(Reductions.reduce(identity, accumulator));
+  }
+
+  /**
+   * Creates a subscriber which performs  a reduction on the elements of this stream, using provided the accumulation
+   * function.
+   * <p>
+   * The result of the reduction is returned in the {@link SubscriberWithResult}. If there are no elements in this stream,
+   * empty will be returned.
+   *
+   * @param accumulator The accumulator function.
+   * @return A new subscriber builder.
+   */
+  public static <T> SubscriberBuilder<T, Optional<T>> reduce(BinaryOperator<T> accumulator) {
+    return collect(Reductions.reduce(accumulator));
+  }
+
+  /**
+   * Creates a subscriber which performs a reduction on the elements of the stream, using the provided identity value,
+   * accumulation function and combiner function.
+   * <p>
+   * The result of the reduction is returned in the {@link SubscriberWithResult}.
+   *
+   * @param identity    The identity value.
+   * @param accumulator The accumulator function.
+   * @param combiner    The combiner function.
+   * @return A new subscriber builder.
+   */
+  public static <T, S> SubscriberBuilder<T, S> reduce(S identity,
+      BiFunction<S, ? super T, S> accumulator,
+      BinaryOperator<S> combiner) {
+
+    return collect(Reductions.reduce(identity, accumulator, combiner));
+  }
+
+  /**
+   * Creates a subscriber that collects the elements using the given {@link Collector}, and redeems the returned
+   * {@link CompletionStage} with the accumulated result of the collector.
+   * <p>
+   * Since Reactive Streams are intrinsically sequential, only the accumulator of the collector will be used, the
+   * combiner will not be used.
+   *
+   * @param collector The collector to collect the elements.
+   * @param <S>       The result of the collector.
+   * @param <A>       The accumulator type.
+   * @return A new subscriber builder.
+   */
+  public static <T, S, A> SubscriberBuilder<T, S> collect(Collector<? super T, A, S> collector) {
+    return new SubscriberBuilder<>(new Stage.CollectSubscriber(collector), null);
+  }
+
+  /**
+   * Creates a subscriber that collects the elements into a {@link List}, and redeems the returned
+   * {@link CompletionStage} with that list.
+   *
+   * @return A new subscriber builder.
+   */
+  public static <T>  SubscriberBuilder<T, List<T>> toList() {
+    return collect(Collectors.toList());
+  }
+
+  /**
+   * Creates a subscriber that finds the first element emitted by the stream, and redeems the returned
+   * {@link CompletionStage} with that element, if found.
+   * <p>
+   * If the stream is completed before a single element is emitted, then {@link Optional#empty()} will be emitted.
+   *
+   * @return A {@link SubscriberBuilder} that represents this processor builders inlet.
+   */
+  public static <T> SubscriberBuilder<T, Optional<T>> findFirst() {
+    return new SubscriberBuilder<>(Stage.FindFirst.INSTANCE, null);
+  }
+
+  /**
+   * Creates a subscriber that cancels the stream as soon as it starts.
+   * <p>
+   * The returned {@link CompletionStage} from the {@link SubscriberWithResult} will be immediately redeemed as soon
+   * as the stream starts.
+   *
+   * @return A new subscriber builder.
+   */
+  public static <T> SubscriberBuilder<T, Void> cancel() {
+    return new SubscriberBuilder<>(Stage.Cancel.INSTANCE, null);
+  }
+
+
+
 }

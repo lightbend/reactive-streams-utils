@@ -17,13 +17,13 @@ import java.util.stream.Collector;
 /**
  * Stage that collects elements into a collector.
  */
-class CollectStage<T, A, R> extends GraphStage implements InletListener {
+class CollectSubscriberStage<T, A, R> extends GraphStage implements InletListener {
   private final StageInlet<T> inlet;
   private final CompletableFuture<R> result;
   private final Collector<T, A, R> collector;
   private A container;
 
-  public CollectStage(BuiltGraph builtGraph, StageInlet<T> inlet,
+  public CollectSubscriberStage(BuiltGraph builtGraph, StageInlet<T> inlet,
       CompletableFuture<R> result, Collector<T, A, R> collector) {
     super(builtGraph);
     this.inlet = inlet;

@@ -39,7 +39,7 @@ public class CancelStageVerification extends AbstractStageVerification {
           cancelled.complete(null);
         }
       });
-    }).cancel().build(engine);
+    }).to(ReactiveStreams.cancel()).build(engine);
     await(cancelled);
     await(result);
   }
@@ -49,14 +49,14 @@ public class CancelStageVerification extends AbstractStageVerification {
     return List.of(new SubscriberVerification());
   }
 
-  public class SubscriberVerification extends StageSubscriberBlackboxVerification {
+  public class SubscriberVerification extends StageSubscriberBlackboxVerification<Integer> {
     @Override
-    public Flow.Subscriber createFlowSubscriber() {
-      return ReactiveStreams.builder().cancel().build(engine).getSubscriber();
+    public Flow.Subscriber<Integer> createFlowSubscriber() {
+      return ReactiveStreams.<Integer>cancel().build(engine).getSubscriber();
     }
 
     @Override
-    public Object createElement(int element) {
+    public Integer createElement(int element) {
       return element;
     }
 

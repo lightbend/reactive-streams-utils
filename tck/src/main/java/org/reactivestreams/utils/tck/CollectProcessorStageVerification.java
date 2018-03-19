@@ -20,50 +20,32 @@ import java.util.stream.Collectors;
 
 import static org.testng.Assert.assertEquals;
 
-public class CollectStageVerification extends AbstractStageVerification {
+public class CollectProcessorStageVerification extends AbstractStageVerification {
 
-  CollectStageVerification(ReactiveStreamsTck.VerificationDeps deps) {
+  CollectProcessorStageVerification(ReactiveStreamsTck.VerificationDeps deps) {
     super(deps);
   }
 
   @Test
-  public void toListStageShouldReturnAList() {
-    assertEquals(await(ReactiveStreams.of(1, 2, 3)
-        .toList().build(engine)), List.of(1, 2, 3));
-  }
-
-  @Test
-  public void toListStageShouldReturnEmpty() {
-    assertEquals(await(ReactiveStreams.of()
-        .toList().build(engine)), List.of());
-  }
-
-  @Test
-  public void finisherFunctionShouldBeInvoked() {
+  public void collectProcessorStageShouldCollectElements() {
     assertEquals(await(ReactiveStreams.of("1", "2", "3")
-        .collect(Collectors.joining(", ")).build(engine)), "1, 2, 3");
+        .collect(Collectors.joining(", ")).toList().build(engine)), List.of("1, 2, 3"));
+  }
+
+  @Test
+  public void collectProcessorShouldCollectAnEmptyStream() {
+    assertEquals(await(ReactiveStreams.of()
+        .collect(Collectors.toList()).toList().build(engine)), List.of(List.of()));
   }
 
   @Test(expectedExceptions = RuntimeException.class, expectedExceptionsMessageRegExp = "failed")
-  public void toListStageShouldPropagateErrors() {
+  public void collectProcessorShouldNotEmitAnythingWhenThereAreErrors() {
     await(ReactiveStreams.failed(new RuntimeException("failed"))
-        .toList().build(engine));
+        .collect(Collectors.toList()).findFirst().build(engine));
   }
 
   @Override
   List<Object> reactiveStreamsTckVerifiers() {
-    return List.of(new SubscriberVerification());
-  }
-
-  class SubscriberVerification extends StageSubscriberBlackboxVerification<Integer> {
-    @Override
-    public Flow.Subscriber<Integer> createFlowSubscriber() {
-      return ReactiveStreams.<Integer>builder().toList().build(engine).getSubscriber();
-    }
-
-    @Override
-    public Integer createElement(int element) {
-      return element;
-    }
+    return List.of();
   }
 }

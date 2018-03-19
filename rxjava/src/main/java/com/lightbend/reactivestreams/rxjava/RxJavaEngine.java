@@ -15,7 +15,6 @@ import hu.akarnokd.rxjava2.interop.FlowInterop;
 import hu.akarnokd.rxjava2.interop.FlowableInterop;
 import hu.akarnokd.rxjava2.interop.SingleInterop;
 import io.reactivex.Flowable;
-import io.reactivex.disposables.Disposable;
 import org.reactivestreams.utils.ReactiveStreamsEngine;
 import org.reactivestreams.utils.SubscriberWithResult;
 import org.reactivestreams.utils.spi.Graph;
@@ -26,7 +25,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collector;
@@ -140,8 +138,8 @@ public class RxJavaEngine implements ReactiveStreamsEngine {
         // Shouldn't happen
         throw new RuntimeException("Unexpected error", e);
       }
-    } else if (stage instanceof Stage.Collect) {
-      Collector collector = ((Stage.Collect) stage).getCollector();
+    } else if (stage instanceof Stage.CollectProcessor) {
+      Collector collector = ((Stage.CollectProcessor) stage).getCollector();
       try {
         return FlowableInterop.first().apply(flowable.compose(FlowableInterop.collect(collector)));
       } catch (Exception e) {

@@ -401,6 +401,8 @@ class BuiltGraph implements Executor {
           addStage(new FlatMapCompletionStage(BuiltGraph.this, inlet, outlet, ((Stage.FlatMapCompletionStage) stage).getMapper()));
         } else if (stage instanceof Stage.FlatMapIterable) {
           addStage(new FlatMapIterableStage(BuiltGraph.this, inlet, outlet, ((Stage.FlatMapIterable) stage).getMapper()));
+        } else if (stage instanceof Stage.CollectProcessor) {
+          addStage(new CollectProcessorStage(BuiltGraph.this, inlet, outlet, ((Stage.CollectProcessor) stage).getCollector()));
         } else if (stage instanceof Stage.Processor) {
           Flow.Processor processor = ((Stage.Processor) stage).getProcessor();
           addStage(new ConnectorStage(BuiltGraph.this, publisher, processor));
@@ -411,8 +413,8 @@ class BuiltGraph implements Executor {
 
         // Outlets
       } else {
-        if (stage instanceof Stage.Collect) {
-          addStage(new CollectStage(BuiltGraph.this, inlet, result, ((Stage.Collect) stage).getCollector()));
+        if (stage instanceof Stage.CollectSubscriber) {
+          addStage(new CollectSubscriberStage(BuiltGraph.this, inlet, result, ((Stage.CollectSubscriber) stage).getCollector()));
         } else if (stage instanceof Stage.FindFirst) {
           addStage(new FindFirstStage(BuiltGraph.this, inlet, result));
         } else if (stage instanceof Stage.Cancel) {

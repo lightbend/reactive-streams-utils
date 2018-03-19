@@ -266,7 +266,35 @@ public interface Stage {
   }
 
   /**
-   * A collect stage.
+   * A collect processor stage.
+   * <p>
+   * This should use the collectors supplier to create an accumulated value, and then the accumulator BiConsumer should
+   * be used to accumulate the received elements in the value. Finally, it should emit the value returned returned by
+   * the finisher function applied to the accumulated value when the stream terminates normally, or should emit an
+   * error if the stream terminates with an error.
+   * <p>
+   * If the collector throws an exception, the stream should be terminated with an error.
+   */
+  final class CollectProcessor implements Inlet, Outlet {
+    private final Collector<?, ?, ?> collector;
+
+    public CollectProcessor(Collector<?, ?, ?> collector) {
+      this.collector = collector;
+    }
+
+    /**
+     * The collector.
+     *
+     * @return The collector.
+     */
+    public Collector<?, ?, ?> getCollector() {
+      return collector;
+    }
+  }
+
+
+  /**
+   * A collect subscriber stage.
    * <p>
    * This should use the collectors supplier to create an accumulated value, and then the accumulator BiConsumer should
    * be used to accumulate the received elements in the value. Finally, the returned
@@ -277,10 +305,10 @@ public interface Stage {
    * If the collector throws an exception, the stream must be cancelled, and the
    * {@link java.util.concurrent.CompletionStage} must be redeemed with that error.
    */
-  final class Collect implements Inlet {
+  final class CollectSubscriber implements Inlet {
     private final Collector<?, ?, ?> collector;
 
-    public Collect(Collector<?, ?, ?> collector) {
+    public CollectSubscriber(Collector<?, ?, ?> collector) {
       this.collector = collector;
     }
 
@@ -426,8 +454,14 @@ public interface Stage {
     }
   }
 
+  /**
+   * A cancel stage.
+   * <p>
+   * This should cancel the stream as soon as it starts.
+   */
   final class Cancel implements Inlet {
-    private Cancel() {}
+    private Cancel() {
+    }
 
     public final static Cancel INSTANCE = new Cancel();
   }

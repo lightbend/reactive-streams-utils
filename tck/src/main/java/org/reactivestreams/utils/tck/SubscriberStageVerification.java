@@ -27,7 +27,7 @@ public class SubscriberStageVerification extends AbstractStageVerification {
   @Test
   public void subscriberStageShouldRedeemCompletionStageWhenCompleted() {
     CompletionStage<Void> result = ReactiveStreams.of().to(
-        ReactiveStreams.builder().ignore().build(engine).getSubscriber()
+        ReactiveStreams.ignore().build(engine).getSubscriber()
     ).build(engine);
     await(result);
   }
@@ -35,7 +35,7 @@ public class SubscriberStageVerification extends AbstractStageVerification {
   @Test(expectedExceptions = RuntimeException.class, expectedExceptionsMessageRegExp = "failed")
   public void subscriberStageShouldRedeemCompletionStageWhenFailed() {
     CompletionStage<Void> result = ReactiveStreams.failed(new RuntimeException("failed")).to(
-        ReactiveStreams.builder().ignore().build(engine).getSubscriber()
+        ReactiveStreams.ignore().build(engine).getSubscriber()
     ).build(engine);
     await(result);
   }
@@ -52,7 +52,7 @@ public class SubscriberStageVerification extends AbstractStageVerification {
         }
       });
     }).to(
-        ReactiveStreams.builder().cancel().build(engine).getSubscriber()
+        ReactiveStreams.cancel().build(engine).getSubscriber()
     ).build(engine);
     await(result);
   }
