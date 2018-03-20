@@ -1,13 +1,13 @@
-/************************************************************************
- * Licensed under Public Domain (CC0)                                    *
- *                                                                       *
- * To the extent possible under law, the person who associated CC0 with  *
- * this code has waived all copyright and related or neighboring         *
- * rights to this code.                                                  *
- *                                                                       *
- * You should have received a copy of the CC0 legalcode along with this  *
- * work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.*
- ************************************************************************/
+/******************************************************************************
+ * Licensed under Public Domain (CC0)                                         *
+ *                                                                            *
+ * To the extent possible under law, the person who associated CC0 with       *
+ * this code has waived all copyright and related or neighboring              *
+ * rights to this code.                                                       *
+ *                                                                            *
+ * You should have received a copy of the CC0 legalcode along with this       *
+ * work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.     *
+ ******************************************************************************/
 
 package com.lightbend.reactivestreams.rxjava;
 
@@ -148,18 +148,9 @@ public class RxJavaEngine implements ReactiveStreamsEngine {
         // Shouldn't happen
         throw new RuntimeException("Unexpected error", e);
       }
-    } else if (stage instanceof Stage.ForEach) {
-      CompletableFuture<Void> done = new CompletableFuture<>();
-      Consumer action = ((Stage.ForEach) stage).getAction();
-      flowable
-          .map(e -> {
-            action.accept(e);
-            return UNIT;
-          })
-          .doOnComplete(() -> done.complete(null))
-          .doOnError(error -> done.completeExceptionally((Throwable) error))
-          .forEach(e -> {});
-      return done;
+    } else if (stage == Stage.Cancel.INSTANCE) {
+      flowable.subscribe().dispose();
+      return CompletableFuture.completedFuture(null);
     } if (stage instanceof Stage.Subscriber) {
       Flow.Subscriber subscriber = ((Stage.Subscriber) stage).getSubscriber();
       TerminationWatchingSubscriber watchTermination = new TerminationWatchingSubscriber(subscriber);

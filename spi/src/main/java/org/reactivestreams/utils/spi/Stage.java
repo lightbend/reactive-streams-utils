@@ -1,19 +1,17 @@
-/************************************************************************
- * Licensed under Public Domain (CC0)                                    *
- *                                                                       *
- * To the extent possible under law, the person who associated CC0 with  *
- * this code has waived all copyright and related or neighboring         *
- * rights to this code.                                                  *
- *                                                                       *
- * You should have received a copy of the CC0 legalcode along with this  *
- * work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.*
- ************************************************************************/
+/******************************************************************************
+ * Licensed under Public Domain (CC0)                                         *
+ *                                                                            *
+ * To the extent possible under law, the person who associated CC0 with       *
+ * this code has waived all copyright and related or neighboring              *
+ * rights to this code.                                                       *
+ *                                                                            *
+ * You should have received a copy of the CC0 legalcode along with this       *
+ * work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.     *
+ ******************************************************************************/
 
 package org.reactivestreams.utils.spi;
 
-import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
@@ -297,30 +295,6 @@ public interface Stage {
   }
 
   /**
-   * A for each stage.
-   * <p>
-   * The for each stage should execute the given action on each element encountered in the stream. Furthermore, the
-   * for each stage should materialize into a {@link CompletionStage} of {@link Void}, which is redeemed when the
-   * stream completes, either successfully or with an error.
-   */
-  final class ForEach implements Inlet {
-    private final Consumer<?> action;
-
-    public ForEach(Consumer<?> action) {
-      this.action = action;
-    }
-
-    /**
-     * The action to consume each element.
-     *
-     * @return The action.
-     */
-    public Consumer<?> getAction() {
-      return action;
-    }
-  }
-
-  /**
    * A flat map stage.
    * <p>
    * The flat map stage should execute the given mapper on each element, and concatenate the publishers emitted by
@@ -452,4 +426,9 @@ public interface Stage {
     }
   }
 
+  final class Cancel implements Inlet {
+    private Cancel() {}
+
+    public final static Cancel INSTANCE = new Cancel();
+  }
 }

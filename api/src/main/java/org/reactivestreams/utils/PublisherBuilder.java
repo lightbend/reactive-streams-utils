@@ -1,13 +1,13 @@
-/************************************************************************
- * Licensed under Public Domain (CC0)                                    *
- *                                                                       *
- * To the extent possible under law, the person who associated CC0 with  *
- * this code has waived all copyright and related or neighboring         *
- * rights to this code.                                                  *
- *                                                                       *
- * You should have received a copy of the CC0 legalcode along with this  *
- * work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.*
- ************************************************************************/
+/******************************************************************************
+ * Licensed under Public Domain (CC0)                                         *
+ *                                                                            *
+ * To the extent possible under law, the person who associated CC0 with       *
+ * this code has waived all copyright and related or neighboring              *
+ * rights to this code.                                                       *
+ *                                                                            *
+ * You should have received a copy of the CC0 legalcode along with this       *
+ * work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.     *
+ ******************************************************************************/
 
 package org.reactivestreams.utils;
 
@@ -171,7 +171,36 @@ public final class PublisherBuilder<T> extends ReactiveStreamsBuilder<Publisher<
    * @return A new completion builder.
    */
   public CompletionBuilder<Void> forEach(Consumer<? super T> action) {
-    return new CompletionBuilder<>(new Stage.ForEach(action), this);
+    return collect(Collector.<T, Void, Void>of(
+        () -> null,
+        (n, t) -> action.accept(t),
+        (v1, v2) -> null,
+        v -> null
+    ));
+  }
+
+  /**
+   * Ignores each element of this stream.
+   * <p>
+   * The returned {@link CompletionStage} will be redeemed when the stream completes, either successfully if the
+   * stream completes normally, or with an error if the stream completes with an error or if the action throws an
+   * exception.
+   *
+   * @return A new completion builder.
+   */
+  public CompletionBuilder<Void> ignore() {
+    return forEach(r -> {});
+  }
+
+  /**
+   * Cancels the stream as soon as it starts.
+   * <p>
+   * The returned {@link CompletionStage} will be immediately redeemed as soon as the stream starts.
+   *
+   * @return A new completion builder.
+   */
+  public CompletionBuilder<Void> cancel() {
+    return new CompletionBuilder<>(Stage.Cancel.INSTANCE, this);
   }
 
   /**
