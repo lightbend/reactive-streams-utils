@@ -17,7 +17,7 @@ import java.util.function.Function;
 /**
  * Flat maps to completion stages of elements.
  */
-class FlatMapCompletionStage<T, R> extends GraphStage implements InletListener, OutletListener {
+class FlatMapCompletionStage<T, R> extends GraphStage implements InletListener<T>, OutletListener {
   private final StageInlet<T> inlet;
   private final StageOutlet<R> outlet;
   private final Function<T, CompletionStage<R>> mapper;

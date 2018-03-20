@@ -16,7 +16,7 @@ import java.util.function.Function;
 /**
  * A map stage.
  */
-class MapStage<T, R> extends GraphStage implements InletListener, OutletListener {
+class MapStage<T, R> extends GraphStage implements InletListener<T>, OutletListener {
   private final StageInlet<T> inlet;
   private final StageOutlet<R> outlet;
   private final Function<T, R> mapper;
@@ -37,6 +37,11 @@ class MapStage<T, R> extends GraphStage implements InletListener, OutletListener
   }
 
   @Override
+  public void onBackpressurelessPush(T element) {
+    outlet.backpressurelessPush(mapper.apply(element));
+  }
+
+  @Override
   public void onUpstreamFinish() {
     outlet.complete();
   }
@@ -49,6 +54,11 @@ class MapStage<T, R> extends GraphStage implements InletListener, OutletListener
   @Override
   public void onPull() {
     inlet.pull();
+  }
+
+  @Override
+  public void onBackpressurelessPull() {
+    inlet.backpressurelessPull();
   }
 
   @Override

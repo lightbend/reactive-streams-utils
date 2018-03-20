@@ -17,13 +17,15 @@ import java.util.function.Function;
 /**
  * A flatmap to iterable stage.
  */
-class FlatMapIterableStage<T, R> extends GraphStage implements InletListener, OutletListener {
+class FlatMapIterableStage<T, R> extends GraphStage implements InletListener<T>, OutletListener {
+  private static final int SEQUENTIAL_PUSH_LIMIT = 32;
   private final StageInlet<T> inlet;
   private final StageOutlet<R> outlet;
   private final Function<T, Iterable<R>> mapper;
 
   private Throwable error;
   private Iterator<R> iterator;
+  private boolean backpressureless;
 
   FlatMapIterableStage(BuiltGraph builtGraph, StageInlet<T> inlet, StageOutlet<R> outlet, Function<T, Iterable<R>> mapper) {
     super(builtGraph);
@@ -42,10 +44,14 @@ class FlatMapIterableStage<T, R> extends GraphStage implements InletListener, Ou
     if (iterator.hasNext()) {
       this.iterator = iterator;
 
-      outlet.push(iterator.next());
-      // Make sure we're still on the same iterator in case a recursive call changed things
-      if (!iterator.hasNext() && this.iterator == iterator) {
-        this.iterator = null;
+      if (backpressureless) {
+        doBackpressurelessPush();
+      } else {
+        outlet.push(iterator.next());
+        // Make sure we're still on the same iterator in case a recursive call changed things
+        if (!iterator.hasNext() && this.iterator == iterator) {
+          this.iterator = null;
+        }
       }
     } else {
       inlet.pull();
@@ -84,6 +90,41 @@ class FlatMapIterableStage<T, R> extends GraphStage implements InletListener, Ou
             outlet.complete();
           }
         }
+      }
+    }
+  }
+
+  @Override
+  public void onBackpressurelessPull() {
+    backpressureless = true;
+    if (iterator == null) {
+      inlet.pull();
+    } else {
+      doBackpressurelessPush();
+    }
+  }
+
+  private void doBackpressurelessPush() {
+    Iterator<R> iterator = this.iterator;
+    int pushed = 0;
+    while (iterator.hasNext() && pushed < SEQUENTIAL_PUSH_LIMIT && !outlet.isClosed()) {
+      pushed++;
+      outlet.backpressurelessPush(iterator.next());
+    }
+    if (!outlet.isClosed()) {
+      if (!iterator.hasNext()) {
+        this.iterator = null;
+        if (inlet.isClosed()) {
+          if (error != null) {
+            outlet.fail(error);
+          } else {
+            outlet.complete();
+          }
+        } else {
+          inlet.pull();
+        }
+      } else {
+        executor().execute(this::doBackpressurelessPush);
       }
     }
   }

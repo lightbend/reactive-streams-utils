@@ -573,6 +573,14 @@ class BuiltGraph implements Executor {
     }
 
     @Override
+    public void backpressurelessPull() {
+      if (!started) {
+        throw new IllegalStateException("Pull before the sub stream has been started.");
+      }
+      delegate.backpressurelessPull();
+    }
+
+    @Override
     public boolean isPulled() {
       return delegate.isPulled();
     }
@@ -604,11 +612,16 @@ class BuiltGraph implements Executor {
     }
 
     @Override
-    public void setListener(InletListener listener) {
-      delegate.setListener(new InletListener() {
+    public void setListener(InletListener<T> listener) {
+      delegate.setListener(new InletListener<>() {
         @Override
         public void onPush() {
           listener.onPush();
+        }
+
+        @Override
+        public void onBackpressurelessPush(T element) {
+          listener.onBackpressurelessPush(element);
         }
 
         @Override

@@ -16,7 +16,7 @@ import java.util.function.Predicate;
 /**
  * Take while stage.
  */
-class TakeWhileStage<T> extends GraphStage implements InletListener, OutletListener {
+class TakeWhileStage<T> extends GraphStage implements InletListener<T>, OutletListener {
   private final StageInlet<T> inlet;
   private final StageOutlet<T> outlet;
   private final Predicate<T> predicate;
@@ -48,6 +48,19 @@ class TakeWhileStage<T> extends GraphStage implements InletListener, OutletListe
   }
 
   @Override
+  public void onBackpressurelessPush(T element) {
+    if (predicate.test(element)) {
+      outlet.backpressurelessPush(element);
+    } else {
+      if (inclusive) {
+        outlet.backpressurelessPush(element);
+      }
+      outlet.complete();
+      inlet.cancel();
+    }
+  }
+
+  @Override
   public void onUpstreamFinish() {
     outlet.complete();
   }
@@ -60,6 +73,11 @@ class TakeWhileStage<T> extends GraphStage implements InletListener, OutletListe
   @Override
   public void onPull() {
     inlet.pull();
+  }
+
+  @Override
+  public void onBackpressurelessPull() {
+    inlet.backpressurelessPull();
   }
 
   @Override

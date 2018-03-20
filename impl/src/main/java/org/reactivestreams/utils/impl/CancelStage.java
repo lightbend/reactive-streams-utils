@@ -17,11 +17,11 @@ import java.util.function.Consumer;
 /**
  * A cancel stage.
  */
-class CancelStage extends GraphStage implements InletListener {
+class CancelStage<T> extends GraphStage implements InletListener<T> {
   private final StageInlet<?> inlet;
   private final CompletableFuture<Void> result;
 
-  CancelStage(BuiltGraph builtGraph, StageInlet<?> inlet, CompletableFuture<Void> result) {
+  CancelStage(BuiltGraph builtGraph, StageInlet<T> inlet, CompletableFuture<Void> result) {
     super(builtGraph);
     this.inlet = inlet;
     this.result = result;

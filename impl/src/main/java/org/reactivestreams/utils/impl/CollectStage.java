@@ -17,7 +17,7 @@ import java.util.stream.Collector;
 /**
  * Stage that collects elements into a collector.
  */
-class CollectStage<T, A, R> extends GraphStage implements InletListener {
+class CollectStage<T, A, R> extends GraphStage implements InletListener<T> {
   private final StageInlet<T> inlet;
   private final CompletableFuture<R> result;
   private final Collector<T, A, R> collector;
@@ -38,14 +38,20 @@ class CollectStage<T, A, R> extends GraphStage implements InletListener {
   protected void postStart() {
     // It's possible that an earlier stage finished immediately, so check first
     if (!inlet.isClosed()) {
-      inlet.pull();
+      inlet.backpressurelessPull();
     }
   }
 
   @Override
   public void onPush() {
+    // This shouldn't be executed because we've done a backpressureless pull, but anyway.
     collector.accumulator().accept(container, inlet.grab());
     inlet.pull();
+  }
+
+  @Override
+  public void onBackpressurelessPush(T element) {
+    collector.accumulator().accept(container, element);
   }
 
   @Override

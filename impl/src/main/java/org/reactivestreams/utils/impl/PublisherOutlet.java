@@ -35,6 +35,10 @@ final class PublisherOutlet<T> implements StageOutlet<T>, Flow.Publisher<T>, Flo
     this.builtGraph = builtGraph;
   }
 
+  private boolean isBackpressureless() {
+    return demand == Long.MAX_VALUE;
+  }
+
   @Override
   public void onStreamFailure(Throwable reason) {
     if (!finished) {
@@ -99,13 +103,17 @@ final class PublisherOutlet<T> implements StageOutlet<T>, Flow.Publisher<T>, Flo
         if (n <= 0) {
           onStreamFailure(new IllegalArgumentException("Request demand must be greater than zero"));
         } else {
-          boolean existingDemand = demand > 0;
-          demand = demand + n;
-          if (demand <= 0) {
-            demand = Long.MAX_VALUE;
-          }
-          if (!existingDemand) {
-            doPull();
+          if (isBackpressureless()) {
+            // Ignore
+          } else {
+            boolean existingDemand = demand > 0;
+            demand = demand + n;
+            if (demand <= 0) {
+              demand = Long.MAX_VALUE;
+            }
+            if (!existingDemand) {
+              doPull();
+            }
           }
         }
       }
@@ -121,7 +129,11 @@ final class PublisherOutlet<T> implements StageOutlet<T>, Flow.Publisher<T>, Flo
 
   private void doPull() {
     pulled = true;
-    listener.onPull();
+    if (isBackpressureless()) {
+      listener.onBackpressurelessPull();
+    } else {
+      listener.onPull();
+    }
   }
 
   @Override
@@ -152,6 +164,17 @@ final class PublisherOutlet<T> implements StageOutlet<T>, Flow.Publisher<T>, Flo
     if (demand > 0) {
       builtGraph.enqueueSignal(this);
     }
+  }
+
+  @Override
+  public void backpressurelessPush(T element) {
+    Objects.requireNonNull(element, "Elements cannot be null");
+    if (finished) {
+      throw new IllegalStateException("Can't push after publisher is finished");
+    } else if (!isBackpressureless()) {
+      throw new IllegalStateException("Can't do backpressureless push without backpressureless pull");
+    }
+    subscriber.onNext(element);
   }
 
   @Override

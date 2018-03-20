@@ -17,7 +17,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  * Stage that just captures termination signals, and redeems the given completable future when it does.
  */
-public class CaptureTerminationStage<T> extends GraphStage implements InletListener, OutletListener {
+public class CaptureTerminationStage<T> extends GraphStage implements InletListener<T>, OutletListener {
   private final StageInlet<T> inlet;
   private final StageOutlet<T> outlet;
   private final CompletableFuture<Void> result;
@@ -38,6 +38,11 @@ public class CaptureTerminationStage<T> extends GraphStage implements InletListe
   }
 
   @Override
+  public void onBackpressurelessPush(T element) {
+    outlet.backpressurelessPush(element);
+  }
+
+  @Override
   public void onUpstreamFinish() {
     outlet.complete();
     result.complete(null);
@@ -52,6 +57,11 @@ public class CaptureTerminationStage<T> extends GraphStage implements InletListe
   @Override
   public void onPull() {
     inlet.pull();
+  }
+
+  @Override
+  public void onBackpressurelessPull() {
+    inlet.backpressurelessPull();
   }
 
   @Override

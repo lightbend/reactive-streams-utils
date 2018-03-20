@@ -16,7 +16,7 @@ import java.util.function.Predicate;
 /**
  * A filter stage.
  */
-class FilterStage<T> extends GraphStage implements InletListener, OutletListener {
+class FilterStage<T> extends GraphStage implements InletListener<T>, OutletListener {
   private final StageInlet<T> inlet;
   private final StageOutlet<T> outlet;
   private final Predicate<T> predicate;
@@ -42,6 +42,13 @@ class FilterStage<T> extends GraphStage implements InletListener, OutletListener
   }
 
   @Override
+  public void onBackpressurelessPush(T element) {
+    if (predicate.test(element)) {
+      outlet.backpressurelessPush(element);
+    }
+  }
+
+  @Override
   public void onUpstreamFinish() {
     outlet.complete();
   }
@@ -54,6 +61,11 @@ class FilterStage<T> extends GraphStage implements InletListener, OutletListener
   @Override
   public void onPull() {
     inlet.pull();
+  }
+
+  @Override
+  public void onBackpressurelessPull() {
+    inlet.backpressurelessPull();
   }
 
   @Override

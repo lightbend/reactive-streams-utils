@@ -17,6 +17,7 @@ import java.util.Iterator;
  * Of stage.
  */
 class OfStage<T> extends GraphStage implements OutletListener {
+  private static final int SEQUENTIAL_PUSH_LIMIT = 32;
   private final StageOutlet<T> outlet;
   private Iterator<T> elements;
 
@@ -42,6 +43,22 @@ class OfStage<T> extends GraphStage implements OutletListener {
     outlet.push(elements.next());
     if (!elements.hasNext() && !outlet.isClosed()) {
       outlet.complete();
+    }
+  }
+
+  @Override
+  public void onBackpressurelessPull() {
+    int pushed = 0;
+    while (elements.hasNext() && pushed < SEQUENTIAL_PUSH_LIMIT && !outlet.isClosed()) {
+      pushed++;
+      outlet.backpressurelessPush(elements.next());
+    }
+    if (!outlet.isClosed()) {
+      if (elements.hasNext()) {
+        executor().execute(this::onBackpressurelessPull);
+      } else {
+        outlet.complete();
+      }
     }
   }
 

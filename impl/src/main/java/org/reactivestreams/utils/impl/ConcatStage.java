@@ -18,6 +18,7 @@ public class ConcatStage<T> extends GraphStage implements OutletListener {
   private final StageOutlet<T> outlet;
 
   private Throwable secondError;
+  private boolean backpressureless;
 
   public ConcatStage(BuiltGraph builtGraph, StageInlet<T> first, StageInlet<T> second, StageOutlet<T> outlet) {
     super(builtGraph);
@@ -40,6 +41,16 @@ public class ConcatStage<T> extends GraphStage implements OutletListener {
   }
 
   @Override
+  public void onBackpressurelessPull() {
+    backpressureless = true;
+    if (first.isClosed()) {
+      second.backpressurelessPull();
+    } else {
+      first.backpressurelessPull();
+    }
+  }
+
+  @Override
   public void onDownstreamFinish() {
     if (!first.isClosed()) {
       first.cancel();
@@ -49,10 +60,15 @@ public class ConcatStage<T> extends GraphStage implements OutletListener {
     }
   }
 
-  private class FirstInletListener implements InletListener {
+  private class FirstInletListener implements InletListener<T> {
     @Override
     public void onPush() {
       outlet.push(first.grab());
+    }
+
+    @Override
+    public void onBackpressurelessPush(T element) {
+      outlet.backpressurelessPush(element);
     }
 
     @Override
@@ -64,7 +80,11 @@ public class ConcatStage<T> extends GraphStage implements OutletListener {
           outlet.complete();
         }
       } else if (outlet.isAvailable()) {
-        second.pull();
+        if (backpressureless) {
+          second.backpressurelessPull();
+        } else {
+          second.pull();
+        }
       }
     }
 
@@ -77,10 +97,15 @@ public class ConcatStage<T> extends GraphStage implements OutletListener {
     }
   }
 
-  private class SecondInletListener implements InletListener {
+  private class SecondInletListener implements InletListener<T> {
     @Override
     public void onPush() {
       outlet.push(second.grab());
+    }
+
+    @Override
+    public void onBackpressurelessPush(T element) {
+      outlet.backpressurelessPush(element);
     }
 
     @Override

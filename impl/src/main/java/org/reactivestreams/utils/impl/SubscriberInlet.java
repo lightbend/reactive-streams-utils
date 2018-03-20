@@ -31,11 +31,12 @@ final class SubscriberInlet<T> implements StageInlet<T>, Flow.Subscriber<T>, Por
   private T elementToPush;
   private Flow.Subscription subscription;
   private int outstandingDemand;
-  private InletListener listener;
+  private InletListener<T> listener;
   private boolean upstreamFinished;
   private boolean downstreamFinished;
   private Throwable error;
   private boolean pulled;
+  private boolean backpressureless;
 
   SubscriberInlet(BuiltGraph builtGraph, int bufferHighWatermark, int bufferLowWatermark) {
     this.builtGraph = builtGraph;
@@ -75,7 +76,11 @@ final class SubscriberInlet<T> implements StageInlet<T>, Flow.Subscriber<T>, Por
         subscription.cancel();
       } else {
         this.subscription = subscription;
-        maybeRequest();
+        if (backpressureless) {
+          subscription.request(Long.MAX_VALUE);
+        } else {
+          maybeRequest();
+        }
       }
     });
   }
@@ -97,6 +102,8 @@ final class SubscriberInlet<T> implements StageInlet<T>, Flow.Subscriber<T>, Por
     builtGraph.execute(() -> {
       if (downstreamFinished || upstreamFinished) {
         // Ignore events after cancellation or complete
+      } else if (backpressureless) {
+        listener.onBackpressurelessPush(item);
       } else if (outstandingDemand == 0) {
         onStreamFailure(new IllegalStateException("Element signalled without demand for it"));
       } else {
@@ -179,6 +186,33 @@ final class SubscriberInlet<T> implements StageInlet<T>, Flow.Subscriber<T>, Por
   }
 
   @Override
+  public void backpressurelessPull() {
+    if (downstreamFinished) {
+      throw new IllegalStateException("Can't pull when finished");
+    } else if (pulled) {
+      throw new IllegalStateException("Can't pull twice");
+    }
+    pulled = true;
+    backpressureless = true;
+    while (!elements.isEmpty()) {
+      listener.onBackpressurelessPush(elements.poll());
+    }
+    if (upstreamFinished) {
+      downstreamFinished = true;
+      if (error == null) {
+        listener.onUpstreamFinish();
+      } else {
+        listener.onUpstreamFailure(error);
+        error = null;
+      }
+    } else {
+      if (subscription != null) {
+        subscription.request(Long.MAX_VALUE);
+      }
+    }
+  }
+
+  @Override
   public boolean isPulled() {
     return pulled;
   }
@@ -233,7 +267,7 @@ final class SubscriberInlet<T> implements StageInlet<T>, Flow.Subscriber<T>, Por
   }
 
   @Override
-  public void setListener(InletListener listener) {
+  public void setListener(InletListener<T> listener) {
     this.listener = Objects.requireNonNull(listener, "Listener must not be null");
   }
 }

@@ -26,6 +26,18 @@ interface StageInlet<T> {
   void pull();
 
   /**
+   * Send a pull without back pressure.
+   * <p>
+   * Using this rather than {@link #pull()} will effectively turn off back pressure for this inlet, and then instead of
+   * {@link InletListener#onPush()} being invoked, {@link InletListener#onBackpressurelessPush(Object)} will be invoked on
+   * new elements. The inlet will not wait for {@link #pull()} to be invoked before invoking
+   * {@link InletListener#onBackpressurelessPush(Object)} for each element.
+   * <p>
+   * Once this has been invoked, it is illegal to invoke either this method or {@link #pull()} again.
+   */
+  void backpressurelessPull();
+
+  /**
    * Whether this inlet has been pulled.
    */
   boolean isPulled();
@@ -62,18 +74,25 @@ interface StageInlet<T> {
    *
    * @param listener The listener.
    */
-  void setListener(InletListener listener);
+  void setListener(InletListener<T> listener);
 }
 
 /**
  * A listener for signals to an inlet.
  */
-interface InletListener {
+interface InletListener<T> {
 
   /**
    * Indicates that an element has been pushed. The element can be received using {@link StageInlet#grab()}.
    */
   void onPush();
+
+  /**
+   * Indicates that an element has been pushed without back pressure.
+   */
+  default void onBackpressurelessPush(T element) {
+    throw new IllegalStateException("Stage does not support backpressureless push");
+  }
 
   /**
    * Indicates that upstream has completed the stream. No signals may be sent to the inlet after this has been invoked.

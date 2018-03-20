@@ -22,9 +22,10 @@ import java.util.Objects;
 final class StageOutletInlet<T> implements Port {
   private final BuiltGraph builtGraph;
 
-  private InletListener inletListener;
+  private InletListener<T> inletListener;
   private OutletListener outletListener;
   private boolean inletPulled;
+  private boolean backpressureless;
   /**
    * The pushed element is an element that has been pushed but for which onPush has not yet been invoked. Once onPush
    * is invoked, it is transferred to currentElement. The reason for this separation is that pushing of elements is not
@@ -81,21 +82,49 @@ final class StageOutletInlet<T> implements Port {
     }
 
     @Override
+    public void backpressurelessPush(T element) {
+      if (outletFinished) {
+        throw new IllegalStateException("Can't push element after complete");
+      } else if (!backpressureless) {
+        throw new IllegalStateException("Can't push backpressureless when backpressureless pull hasn't been done");
+      }
+      inletListener.onBackpressurelessPush(element);
+    }
+
+    @Override
     public void signal() {
       if (!inletFinished) {
-        currentElement = pushedElement;
-        pushedElement = null;
-        inletListener.onPush();
-        // Possible that there was a pull/push cycle done during that onPush,
-        // followed by a complete, in which case, we don't want to publish that
-        // complete yet.
-        if (outletFinished && pushedElement == null && !inletFinished) {
-          inletFinished = true;
-          if (failure != null) {
-            inletListener.onUpstreamFailure(failure);
-            failure = null;
-          } else {
-            inletListener.onUpstreamFinish();
+        if (backpressureless) {
+          T element = pushedElement;
+          pushedElement = null;
+          inletListener.onBackpressurelessPush(element);
+          if (!inletFinished) {
+            if (outletFinished) {
+              if (failure != null) {
+                inletListener.onUpstreamFailure(failure);
+                failure = null;
+              } else {
+                inletListener.onUpstreamFinish();
+              }
+            } else {
+              outletListener.onPull();
+            }
+          }
+        } else {
+          currentElement = pushedElement;
+          pushedElement = null;
+          inletListener.onPush();
+          // Possible that there was a pull/push cycle done during that onPush,
+          // followed by a complete, in which case, we don't want to publish that
+          // complete yet.
+          if (outletFinished && pushedElement == null && !inletFinished) {
+            inletFinished = true;
+            if (failure != null) {
+              inletListener.onUpstreamFailure(failure);
+              failure = null;
+            } else {
+              inletListener.onUpstreamFinish();
+            }
           }
         }
       }
@@ -150,16 +179,30 @@ final class StageOutletInlet<T> implements Port {
 
     @Override
     public void pull() {
+      validatePull();
+      if (!outletFinished) {
+        inletPulled = true;
+        outletListener.onPull();
+      }
+    }
+
+    @Override
+    public void backpressurelessPull() {
+      validatePull();
+      if (!outletFinished) {
+        inletPulled = true;
+        backpressureless = true;
+        outletListener.onBackpressurelessPull();
+      }
+    }
+
+    private void validatePull() {
       if (inletFinished) {
         throw new IllegalStateException("Can't pull after complete");
       } else if (inletPulled) {
         throw new IllegalStateException("Can't pull twice");
       } else if (currentElement != null) {
         throw new IllegalStateException("Can't pull without having grabbed the previous element");
-      }
-      if (!outletFinished) {
-        inletPulled = true;
-        outletListener.onPull();
       }
     }
 
@@ -198,13 +241,16 @@ final class StageOutletInlet<T> implements Port {
         throw new IllegalStateException("Grab without onPush notification");
       }
       T grabbed = currentElement;
-      inletPulled = false;
+      inletPulled = backpressureless;
       currentElement = null;
+      if (backpressureless && !outletFinished) {
+        outletListener.onPull();
+      }
       return grabbed;
     }
 
     @Override
-    public void setListener(InletListener listener) {
+    public void setListener(InletListener<T> listener) {
       inletListener = Objects.requireNonNull(listener, "Cannot register null listener");
     }
   }

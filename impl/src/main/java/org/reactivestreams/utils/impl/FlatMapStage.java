@@ -15,13 +15,14 @@ import org.reactivestreams.utils.spi.Graph;
 
 import java.util.function.Function;
 
-class FlatMapStage<T, R> extends GraphStage implements InletListener, OutletListener {
+class FlatMapStage<T, R> extends GraphStage implements InletListener<T>, OutletListener {
   private final StageInlet<T> inlet;
   private final StageOutlet<R> outlet;
   private final Function<T, Graph> mapper;
 
   private BuiltGraph.SubStageInlet<R> substream;
   private Throwable error;
+  private boolean backpressureless;
 
   FlatMapStage(BuiltGraph builtGraph, StageInlet<T> inlet, StageOutlet<R> outlet, Function<T, Graph> mapper) {
     super(builtGraph);
@@ -37,10 +38,15 @@ class FlatMapStage<T, R> extends GraphStage implements InletListener, OutletList
   public void onPush() {
     Graph graph = mapper.apply(inlet.grab());
     substream = createSubInlet(graph);
-    substream.setListener(new InletListener() {
+    substream.setListener(new InletListener<>() {
       @Override
       public void onPush() {
         outlet.push(substream.grab());
+      }
+
+      @Override
+      public void onBackpressurelessPush(R element) {
+        outlet.backpressurelessPush(element);
       }
 
       @Override
@@ -66,7 +72,11 @@ class FlatMapStage<T, R> extends GraphStage implements InletListener, OutletList
       }
     });
     substream.start();
-    substream.pull();
+    if (backpressureless) {
+      substream.backpressurelessPull();
+    } else {
+      substream.pull();
+    }
   }
 
   @Override
@@ -91,6 +101,16 @@ class FlatMapStage<T, R> extends GraphStage implements InletListener, OutletList
       inlet.pull();
     } else {
       substream.pull();
+    }
+  }
+
+  @Override
+  public void onBackpressurelessPull() {
+    backpressureless = true;
+    if (substream == null) {
+      inlet.pull();
+    } else {
+      substream.backpressurelessPull();
     }
   }
 

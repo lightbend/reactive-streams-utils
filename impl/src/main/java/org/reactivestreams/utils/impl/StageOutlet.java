@@ -29,6 +29,15 @@ interface StageOutlet<T> {
   void push(T element);
 
   /**
+   * Push an element without backpressure.
+   * <p>
+   * Elements may only be pushed via this method if {@link OutletListener#onBackpressurelessPull()} has been invoked.
+   * If this method is invoked, the stage can expect not to receive a subsequent {@link OutletListener#onPull()} signal
+   * to pull more elements, instead, it should continue invoking this method as long as it has elements to push.
+   */
+  void backpressurelessPush(T element);
+
+  /**
    * Whether this outlet is available for an element to be pushed.
    */
   boolean isAvailable();
@@ -67,6 +76,18 @@ interface OutletListener {
    * A pull signal, indicates that downstream is ready to be pushed to.
    */
   void onPull();
+
+  /**
+   * A backpressureless pull signal, indicates that downstream can be pushed to using
+   * {@link StageOutlet#backpressurelessPush(Object)} without receiving any further {@link #onPull()} signals.
+   *
+   * If a stage receives this signal, it may optionally use the {@link StageOutlet#backpressurelessPush(Object)}
+   * method to push as many times as it wants without receiving onPull signals, or it may use the regular
+   * {@link StageOutlet#push(Object)} to push with backpressure, waiting to receive onPull signals between each one.
+   */
+  default void onBackpressurelessPull() {
+    onPull();
+  }
 
   /**
    * A completion signal, indicates that downstream has completed. No further signals may be sent to this outlet after
