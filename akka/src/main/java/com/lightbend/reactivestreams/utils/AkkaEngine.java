@@ -164,14 +164,28 @@ public class AkkaEngine implements ReactiveStreamsEngine {
     } else if (stage instanceof Stage.Collect) {
       Collector collector = ((Stage.Collect) stage).getCollector();
       BiConsumer accumulator = collector.accumulator();
-      Sink<Object, CompletionStage<Object>> sink = Sink.fold(collector.supplier().get(), (resultContainer, in) -> {
-        accumulator.accept(resultContainer, in);
+      Object firstContainer = collector.supplier().get();
+      if (firstContainer == null) {
+        firstContainer = NULL;
+      }
+      Sink<Object, CompletionStage<Object>> sink = Sink.fold(firstContainer, (resultContainer, in) -> {
+        if (resultContainer == NULL) {
+          accumulator.accept(null, in);
+        } else {
+          accumulator.accept(resultContainer, in);
+        }
         return resultContainer;
       });
-      if (collector.characteristics().contains(Collector.Characteristics.IDENTITY_FINISH)) {
+      if (collector.characteristics().contains(Collector.Characteristics.IDENTITY_FINISH) && firstContainer != NULL) {
         return sink;
       } else {
-        return sink.mapMaterializedValue(result -> result.thenApply(collector.finisher()));
+        return sink.mapMaterializedValue(result -> result.thenApply(r -> {
+          if (r == NULL) {
+            return collector.finisher().apply(null);
+          } else {
+            return collector.finisher().apply(r);
+          }
+        }));
       }
     } else if (stage instanceof Stage.Subscriber) {
       return Flow.create()
@@ -235,4 +249,9 @@ public class AkkaEngine implements ReactiveStreamsEngine {
   }
 
   private final Attributes akkaEngineAttributes = Attributes.apply(new AkkaEngineAttribute());
+
+  /**
+   * Place holder for null.
+   */
+  private static final Object NULL = new Object();
 }
